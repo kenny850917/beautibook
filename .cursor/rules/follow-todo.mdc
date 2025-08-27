@@ -1,0 +1,42 @@
+---
+description: BeautiBook MVP task management and phase progression rules
+globs:
+alwaysApply: true
+---
+
+## Task Management Protocol
+
+### Session Startup
+
+- **Always read `todo.md` first** - Check current phase and next incomplete task
+- **Mark completed tasks** - If files/code exist that complete a task, mark with `[x]`
+- **Resume from first incomplete** - Take the smallest next actionable step
+- **Evidence-based completion** - Only mark done when files/functionality exists
+
+### Phase Discipline
+
+- **Follow 9-phase sequence** - Foundation → UI → Admin → Booking → Real-time → Email → Analytics → Testing
+- **Respect dependencies** - Don't skip to Phase 4 without Phase 1-3 foundations
+- **Single task focus** - Complete current task before starting next
+- **Phase gates** - Verify phase completion before advancing
+
+### Code Implementation Rules
+
+- **File-specific tasks** - Create exact files mentioned in todo.md tasks
+- **Singleton pattern** - Use singleton services as specified in backend.mdc rules
+- **Mobile-first** - Follow mobile-first development per frontend.mdc rules
+- **MVP scope only** - Avoid feature creep beyond todo.md tasks
+
+### Quality Assurance
+
+- **Test task completion** - Verify functionality works before marking done
+- **Cross-reference MVP.md** - Ensure alignment with original specifications
+- **Maintain todo.md** - Keep task status current throughout session
+- **Phase completion check** - Validate all phase tasks before moving forward
+
+### Conflict Resolution
+
+- **Scope ambiguity** - Ask for clarification with specific options from todo.md
+- **Dependency blocking** - Complete prerequisite tasks first
+- **MVP boundary** - Stay within defined MVP scope, note future features
+- **Technical decisions** - Follow established patterns in rules/ directory

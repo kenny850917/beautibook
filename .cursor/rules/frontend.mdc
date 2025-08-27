@@ -1,0 +1,87 @@
+---
+description: Frontend development best practices for booking system
+globs: ["**/*.tsx", "**/*.ts", "**/*.jsx", "**/*.js", "**/globals.css"]
+alwaysApply: false
+---
+
+## Next.js 15
+
+- Use App Router (app/) for all routes and layouts
+- Leverage React Server Components for data fetching and SEO
+- Use Server Actions for form handling and mutations
+- Implement loading.tsx and error.tsx boundaries
+- Use Next.js Image component with proper sizing
+- Implement dynamic imports for code splitting
+- Design for mobile viewports first (375px base)
+- Use touch-friendly components (min 44px targets)
+- Use middleware for authentication and route protection
+
+## React 18 & TypeScript
+
+- Create small, single-purpose components (<50 lines)
+- Use TypeScript interfaces for all props and state
+- Implement proper error boundaries with ErrorBoundary
+- Use React.memo() for expensive components
+- Create custom hooks for business logic (useBookingHold, useAvailability)
+- Use useState for local component state
+- Implement useCallback() for event handlers
+- Use useMemo() for expensive calculations
+- Lazy load components with React.lazy()
+- Use TypeScript strict mode in tsconfig.json
+
+## Tailwind CSS
+
+- Start with mobile styles (no prefix for mobile-first)
+- Use responsive breakpoints: sm: md: lg: xl: 2xl:
+- Implement touch targets minimum 44px (p-3 or larger)
+- Apply proper spacing scale (4, 8, 12, 16px multiples)
+- Define custom colors in tailwind.config.ts
+- Use semantic color naming (primary, secondary, accent)
+- Create reusable component variants with cva
+- Enable JIT mode for faster builds
+- Purge unused CSS in production
+- Group related utility classes for readability
+
+## React-Big-Calendar
+
+- Customize calendar views for mobile screens
+- Implement touch-friendly event handling
+- Use custom toolbar components for mobile navigation
+- Enable swipe gestures for month/week navigation
+- Use date-fns for consistent date operations
+- Store all dates in UTC, display in PST
+- Implement timezone conversion utilities
+- Handle daylight saving time transitions
+- Create custom Event components for booking display
+- Add proper ARIA labels for accessibility
+
+## EmailJS Integration
+
+- Implement try-catch blocks for all email operations
+- Provide fallback UI when email service fails
+- Show confirmation popup as backup communication
+- Use environment variables for EmailJS configuration
+- Create professional email templates with salon branding
+- Send emails asynchronously without blocking UI
+- Show loading states during email processing
+- Implement retry logic for failed sends
+- Log email failures for monitoring
+
+## Development Workflow
+
+- Configure ESLint with Next.js recommended rules
+- Set up Prettier with consistent formatting
+- Implement pre-commit hooks with Husky
+- Use absolute imports with proper path mapping
+- Write unit tests with Jest and React Testing Library
+- Test custom hooks with @testing-library/react-hooks
+- Implement integration tests for booking flows
+- Use MSW for API mocking in tests
+- Maintain minimum 80% test coverage for critical paths
+- Use React DevTools Profiler for render optimization
+- Monitor bundle size with @next/bundle-analyzer
+- Implement proper ARIA labels and roles
+- Use semantic HTML elements
+- Ensure keyboard navigation support
+- Maintain WCAG 2.1 AA compliance
+- Provide clear loading and error states

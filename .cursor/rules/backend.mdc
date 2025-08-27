@@ -1,0 +1,83 @@
+---
+description: MVP-focused backend best practices with singleton patterns and simplified services
+globs: ["**/api/**/*.ts", "**/lib/**/*.ts", "prisma/**/*", "**/middleware.ts"]
+alwaysApply: false
+---
+
+## MVP Architecture Patterns
+
+- Use singleton pattern for all core services (database, email, auth)
+- Create consolidated service classes instead of microservices
+- Keep all business logic in single service files per domain
+- Use simple in-memory caching (no Redis complexity)
+- Focus on working MVP over perfect architecture
+- Avoid premature optimization and over-engineering
+
+## Runtime & Database
+
+- Use async/await for all asynchronous operations
+- Implement basic error handling with try-catch blocks
+- Use single Prisma client instance across application
+- Design simple, flat database schemas for speed
+- Use basic data types and essential constraints only
+- Use Prisma's default connection handling
+- Keep migrations simple and additive
+- Use Prisma Studio for database visualization
+
+## Authentication (Simplified)
+
+- Use database session strategy for MVP simplicity
+- Configure basic secure cookie settings (httpOnly, secure)
+- Define simple user roles: "ADMIN" | "STAFF"
+- Create single AuthService singleton for all auth logic
+- Use bcryptjs with 12 salt rounds for password hashing
+- Protect API routes with simple middleware authentication
+- Log critical authentication events only
+
+## Services Architecture (Singleton Pattern)
+
+- Create single service instances using getInstance() pattern
+- Use private static instance property for singleton enforcement
+- Implement lazy initialization for better performance
+- Keep all related business logic within single service class
+- Export singleton instances from service files
+
+## API & Real-time (MVP Style)
+
+- Use Next.js API routes for all endpoints
+- Implement basic HTTP methods with Zod validation
+- Use simple EventEmitter for SSE notifications
+- Use in-memory store for active SSE connections
+- Handle disconnections with basic cleanup
+- Return JSON responses with simple error handling
+- Create consolidated endpoints per feature
+- Keep error responses user-friendly
+
+## Booking Logic (Core MVP)
+
+- Use database transactions for booking creation only
+- Implement booking hold with setTimeout cleanup (5 minutes)
+- Store timestamps in UTC, display PST in frontend
+- Use date-fns for basic date operations
+- Validate core business rules (conflicts, availability)
+- Use optimistic updates with simple conflict resolution
+- Create single BookingHoldService for hold management
+
+## Development & Deployment
+
+- Use environment variables for all configuration
+- Implement basic logging with console.log
+- Use Prisma migrations for schema changes
+- Create simple seed scripts for development
+- Use Vercel for one-click deployment
+- Focus on manual testing over complex test suites
+- Implement basic health check endpoint
+
+## MVP Service Consolidation
+
+- **AuthService**: Authentication, authorization, user management
+- **BookingService**: Booking creation, conflict checking, holds
+- **AvailabilityService**: Staff schedules, time slot calculation
+- **EmailService**: Confirmation emails, notifications
+- **PrismaService**: Database client singleton
+- **SSEService**: Real-time updates, connection management
