@@ -34,6 +34,18 @@ export default withAuth(
       }
     }
 
+    // Customer API protection - Admin only access
+    if (pathname.startsWith("/api/customers")) {
+      if (!token || token.role !== "ADMIN") {
+        return new NextResponse(
+          JSON.stringify({
+            error: "Admin access required for customer management",
+          }),
+          { status: 403, headers: { "content-type": "application/json" } }
+        );
+      }
+    }
+
     if (pathname.startsWith("/api/staff")) {
       if (!token || (token.role !== "STAFF" && token.role !== "ADMIN")) {
         return new NextResponse(
@@ -76,8 +88,8 @@ export const config = {
     "/staff/:path*",
     "/api/admin/:path*",
     "/api/staff/:path*",
+    "/api/customers/:path*",
     // Public routes that need auth checking
     "/dashboard/:path*",
   ],
 };
-

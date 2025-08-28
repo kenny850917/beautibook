@@ -1,132 +1,190 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import CustomerCRMContent from "@/components/Admin/CustomerCRMContent";
 
+// Server Component metadata following frontend.mdc
 export const metadata: Metadata = {
-  title: "Customer CRM - Admin Dashboard | BeautiBook",
+  title: "Customer CRM - BeautiBook Admin",
   description:
-    "Manage guest customers, track booking history, and analyze customer data for your beauty salon.",
+    "Manage salon customers, view booking history, and track customer analytics",
+  robots: {
+    index: false, // Admin pages should not be indexed
+    follow: false,
+  },
 };
 
-/**
- * Admin Customer Management Page
- *
- * Provides comprehensive customer relationship management for salon admins:
- * - Guest customer tracking and identification
- * - Customer segmentation and analytics
- * - Booking history and spending patterns
- * - Marketing consent and communication preferences
- *
- * Features:
- * - Search customers by name, phone, or email
- * - Filter by customer segments (VIP, Gold, Regular, New)
- * - View detailed customer profiles with booking history
- * - Track customer lifetime value and preferences
- * - Identify inactive customers for re-engagement
- */
-export default function AdminCustomersPage() {
+// Loading component for Suspense boundary following frontend.mdc
+function CustomerCRMLoading() {
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="border-b border-gray-200 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Customer Management
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Track guest customers, analyze booking patterns, and manage
-              relationships
-            </p>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex items-center space-x-3">
-            <button
-              type="button"
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-            >
-              <svg
-                className="h-4 w-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              Export Data
-            </button>
-
-            <button
-              type="button"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-            >
-              <svg
-                className="h-4 w-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Add Customer
-            </button>
-          </div>
-        </div>
+      {/* Header skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+        <div className="mt-4 sm:mt-0 h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
       </div>
 
-      {/* Breadcrumb Navigation */}
-      <nav className="flex" aria-label="Breadcrumb">
-        <ol className="flex items-center space-x-2">
-          <li>
-            <div>
-              <a href="/admin" className="text-gray-400 hover:text-gray-500">
-                <svg
-                  className="flex-shrink-0 h-5 w-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  aria-hidden="true"
-                >
-                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                </svg>
-                <span className="sr-only">Admin Dashboard</span>
-              </a>
-            </div>
-          </li>
-          <li>
-            <div className="flex items-center">
-              <svg
-                className="flex-shrink-0 h-5 w-5 text-gray-300"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="ml-2 text-sm font-medium text-gray-500">
-                Customer CRM
-              </span>
-            </div>
-          </li>
-        </ol>
-      </nav>
+      {/* Stats skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white p-6 rounded-lg shadow animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+            <div className="h-8 bg-gray-200 rounded w-16"></div>
+          </div>
+        ))}
+      </div>
 
-      {/* Customer CRM Content */}
-      <CustomerCRMContent />
+      {/* Search skeleton */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="h-10 bg-gray-200 rounded w-full max-w-md animate-pulse"></div>
+      </div>
+
+      {/* Customer list skeleton */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="divide-y divide-gray-200">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="p-4 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center min-w-0 flex-1">
+                  <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                  <div className="ml-4 min-w-0 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-48"></div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
+                  <div className="h-3 bg-gray-200 rounded w-20"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
+// Error boundary component following frontend.mdc
+function CustomerCRMError() {
+  return (
+    <div className="text-center py-12">
+      <div className="mx-auto max-w-md">
+        <svg
+          className="mx-auto h-12 w-12 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.954-.833-2.724 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+          />
+        </svg>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">
+          Error loading customer data
+        </h3>
+        <p className="mt-1 text-sm text-gray-500">
+          There was a problem loading the customer management interface.
+        </p>
+        <div className="mt-6">
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Breadcrumb navigation following frontend.mdc mobile-first design
+function CustomerBreadcrumb() {
+  return (
+    <nav className="flex mb-6" aria-label="Breadcrumb">
+      <ol className="flex items-center space-x-4">
+        <li>
+          <div>
+            <a
+              href="/admin"
+              className="text-gray-400 hover:text-gray-500 transition-colors"
+            >
+              <svg
+                className="flex-shrink-0 h-5 w-5"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2L2 7v10c0 5.55 3.84 10 9 11 5.16-1 9-5.45 9-11V7l-10-5z" />
+              </svg>
+              <span className="sr-only">Admin Dashboard</span>
+            </a>
+          </div>
+        </li>
+        <li>
+          <div className="flex items-center">
+            <svg
+              className="flex-shrink-0 h-5 w-5 text-gray-400"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="ml-4 text-sm font-medium text-gray-900">
+              Customer CRM
+            </span>
+          </div>
+        </li>
+      </ol>
+    </nav>
+  );
+}
+
+// Main Server Component following frontend.mdc App Router patterns
+export default function CustomerManagementPage() {
+  return (
+    <div className="min-h-full bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Breadcrumb Navigation */}
+        <CustomerBreadcrumb />
+
+        {/* Page Content with Suspense Boundary */}
+        <Suspense fallback={<CustomerCRMLoading />}>
+          <div className="space-y-6">
+            {/* Error Boundary would go here in production */}
+            <CustomerCRMContent />
+          </div>
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+// Loading page for Next.js file-based loading states
+export function Loading() {
+  return <CustomerCRMLoading />;
+}
+
+// Error page for Next.js file-based error handling
+export function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div className="min-h-full bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <CustomerBreadcrumb />
+        <CustomerCRMError />
+      </div>
+    </div>
+  );
+}
