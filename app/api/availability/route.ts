@@ -3,11 +3,34 @@ import { z } from "zod";
 import { AvailabilityService } from "@/lib/services/AvailabilityService";
 import { BookingHoldService } from "@/lib/services/BookingHoldService";
 import { PrismaService } from "@/lib/services/PrismaService";
-import { format, parseISO, addMinutes, startOfDay, endOfDay } from "date-fns";
+import {
+  format,
+  parseISO,
+  addMinutes,
+  startOfDay,
+  endOfDay,
+  getDay,
+} from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { DayOfWeek } from "@prisma/client";
 
 // PST timezone constant following frontend.mdc
 const PST_TIMEZONE = "America/Los_Angeles";
+
+// Convert Date to DayOfWeek enum
+function dateToDayOfWeek(date: Date): DayOfWeek {
+  const dayNumber = getDay(date); // 0 = Sunday, 1 = Monday, etc.
+  const dayMap: DayOfWeek[] = [
+    DayOfWeek.SUNDAY,
+    DayOfWeek.MONDAY,
+    DayOfWeek.TUESDAY,
+    DayOfWeek.WEDNESDAY,
+    DayOfWeek.THURSDAY,
+    DayOfWeek.FRIDAY,
+    DayOfWeek.SATURDAY,
+  ];
+  return dayMap[dayNumber];
+}
 
 // Validation schema following backend.mdc Zod patterns
 const AvailabilityQuerySchema = z.object({
@@ -22,10 +45,10 @@ const AvailabilityQuerySchema = z.object({
 });
 
 interface TimeSlot {
+  time: string; // PST formatted time for display (e.g., "9:00 AM")
   datetime: string; // ISO string
   available: boolean;
   reason?: string;
-  pstTime: string; // PST formatted time for display
 }
 
 /**
@@ -35,8 +58,8 @@ interface TimeSlot {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const staffId = searchParams.get("staffId");
-    const serviceId = searchParams.get("serviceId");
+    const staffId = searchParams.get("staff");
+    const serviceId = searchParams.get("service");
     const date = searchParams.get("date");
 
     // Validate input following backend.mdc
@@ -106,12 +129,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get staff availability for the date
+    const dayOfWeek = dateToDayOfWeek(pstDate);
     const staffAvailable = await availabilityService.getStaffAvailability(
       validStaffId,
+      dayOfWeek,
       pstDate
     );
 
-    if (!staffAvailable || staffAvailable.length === 0) {
+    if (!staffAvailable) {
       return NextResponse.json({
         success: true,
         slots: [],
@@ -152,7 +177,7 @@ export async function GET(request: NextRequest) {
 
     // Generate 15-minute time slots following requirements
     const timeSlots = await generateTimeSlots(
-      staffAvailable,
+      [staffAvailable], // Wrap single availability object in array
       service,
       existingBookings,
       activeHolds,
@@ -239,10 +264,10 @@ async function generateTimeSlots(
         const pstTimeString = format(currentSlot, "h:mm a");
 
         slots.push({
+          time: pstTimeString,
           datetime: utcSlotTime.toISOString(),
           available: slotAvailability.available,
           reason: slotAvailability.reason,
-          pstTime: pstTimeString,
         });
       }
 
@@ -314,4 +339,3 @@ function checkSlotAvailability(
 
   return { available: true };
 }
-

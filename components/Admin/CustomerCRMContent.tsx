@@ -16,6 +16,18 @@ interface Customer {
   marketing_consent: boolean;
   created_at: Date;
   notes?: string;
+  segment?: string;
+}
+
+interface ApiStatsResponse {
+  total: number;
+  vip: number;
+  gold: number;
+  regular: number;
+  new: number;
+  totalRevenue: number;
+  avgBookings: number;
+  emailConsent: number;
 }
 
 interface CustomerWithHistory extends Customer {
@@ -42,80 +54,47 @@ export default function CustomerCRMContent() {
     "all" | "vip" | "inactive" | "new"
   >("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [apiStats, setApiStats] = useState<ApiStatsResponse | null>(null);
 
-  // Load customers data
+  // Load customers data from real API
   const loadCustomers = useCallback(async () => {
     try {
       setIsLoading(true);
 
-      // TODO: Replace with actual API call in Phase 4
-      const mockCustomers: Customer[] = [
-        {
-          id: "1",
-          name: "Sarah Johnson",
-          phone: "+1234567890",
-          email: "sarah@example.com",
-          total_bookings: 15,
-          total_spent: 125000, // $1,250 in cents
-          last_booking_at: new Date(2024, 11, 15),
-          preferred_staff: "staff_1",
-          preferred_service: "service_1",
-          marketing_consent: true,
-          created_at: new Date(2024, 8, 1),
-          notes:
-            "[2024-12-01] Prefers morning appointments\n[2024-11-15] Allergic to certain hair products",
-        },
-        {
-          id: "2",
-          name: "Mike Chen",
-          phone: "+1987654321",
-          total_bookings: 3,
-          total_spent: 19500, // $195 in cents
-          last_booking_at: new Date(2024, 10, 20),
-          marketing_consent: false,
-          created_at: new Date(2024, 10, 1),
-        },
-        {
-          id: "3",
-          name: "Emma Wilson",
-          phone: "+1555123456",
-          email: "emma@example.com",
-          total_bookings: 8,
-          total_spent: 64000, // $640 in cents
-          last_booking_at: new Date(2024, 9, 10), // Inactive
-          marketing_consent: true,
-          created_at: new Date(2024, 7, 15),
-        },
-      ];
-
-      // Filter based on type
-      const filteredCustomers = mockCustomers.filter((customer) => {
-        switch (filterType) {
-          case "vip":
-            return customer.total_spent >= 50000; // $500+
-          case "inactive":
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            return (
-              customer.last_booking_at &&
-              customer.last_booking_at < thirtyDaysAgo
-            );
-          case "new":
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            return customer.created_at > sevenDaysAgo;
-          default:
-            return true;
-        }
+      // Build query parameters
+      const params = new URLSearchParams({
+        search: searchQuery,
+        filter: filterType,
+        limit: "50",
+        offset: "0",
       });
 
-      setCustomers(filteredCustomers);
+      const response = await fetch(`/api/admin/customers?${params}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCustomers(data.customers || []);
+        setApiStats(data.stats || null);
+      } else {
+        throw new Error(data.error || "Failed to load customers");
+      }
     } catch (error) {
       console.error("Error loading customers:", error);
+      setCustomers([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
-  }, [filterType]);
+  }, [filterType, searchQuery]);
 
   useEffect(() => {
     loadCustomers();
@@ -123,30 +102,27 @@ export default function CustomerCRMContent() {
 
   const loadCustomerHistory = async (customerId: string) => {
     try {
-      // TODO: Replace with actual API call
-      const mockHistory: CustomerWithHistory = {
-        ...customers.find((c) => c.id === customerId)!,
-        bookings: [
-          {
-            id: "booking_1",
-            slot_datetime: new Date(2024, 11, 15, 10, 0),
-            final_price: 6500,
-            service: { name: "Haircut", duration_minutes: 60 },
-            staff: { name: "Sarah" },
-          },
-          {
-            id: "booking_2",
-            slot_datetime: new Date(2024, 10, 20, 14, 30),
-            final_price: 12000,
-            service: { name: "Hair Color", duration_minutes: 120 },
-            staff: { name: "Lisa" },
-          },
-        ],
-      };
+      const response = await fetch(`/api/admin/customers/${customerId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-      setSelectedCustomer(mockHistory);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.customer) {
+        setSelectedCustomer(data.customer);
+      } else {
+        throw new Error(data.error || "Failed to load customer details");
+      }
     } catch (error) {
       console.error("Error loading customer history:", error);
+      // Optional: Show error toast/notification to user
     }
   };
 
@@ -157,7 +133,13 @@ export default function CustomerCRMContent() {
     }).format(cents / 100);
   };
 
-  const getCustomerSegment = (customer: Customer): string => {
+  const getCustomerSegment = (
+    customer: Customer & { segment?: string }
+  ): string => {
+    // Use segment from API if available, otherwise calculate
+    if (customer.segment) return customer.segment;
+
+    // Fallback calculation (same as API logic)
     if (customer.total_spent >= 100000) return "VIP"; // $1000+
     if (customer.total_spent >= 50000) return "Gold"; // $500+
     if (customer.total_bookings >= 5) return "Regular";
@@ -250,7 +232,7 @@ export default function CustomerCRMContent() {
                 Total Customers
               </p>
               <p className="text-2xl font-semibold text-gray-900">
-                {customers.length}
+                {apiStats?.total || customers.length}
               </p>
             </div>
           </div>
@@ -277,7 +259,8 @@ export default function CustomerCRMContent() {
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-semibold text-gray-900">
                 {formatCurrency(
-                  customers.reduce((sum, c) => sum + c.total_spent, 0)
+                  apiStats?.totalRevenue ||
+                    customers.reduce((sum, c) => sum + c.total_spent, 0)
                 )}
               </p>
             </div>
@@ -304,7 +287,9 @@ export default function CustomerCRMContent() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Avg. Bookings</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {customers.length > 0
+                {apiStats?.avgBookings
+                  ? apiStats.avgBookings.toFixed(1)
+                  : customers.length > 0
                   ? (
                       customers.reduce((sum, c) => sum + c.total_bookings, 0) /
                       customers.length
@@ -335,7 +320,8 @@ export default function CustomerCRMContent() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Email Consent</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {customers.filter((c) => c.marketing_consent).length}
+                {apiStats?.emailConsent ||
+                  customers.filter((c) => c.marketing_consent).length}
               </p>
             </div>
           </div>

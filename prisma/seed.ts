@@ -165,6 +165,80 @@ async function main() {
     },
   });
 
+  // Create sample customers for CRM testing
+  console.log("Creating sample customers...");
+
+  const customers = [
+    {
+      name: "Emma Wilson",
+      phone: "+15551234567",
+      email: "emma.wilson@email.com",
+      total_bookings: 8,
+      total_spent: 64000, // $640
+      last_booking_at: new Date(2024, 11, 10), // Recent
+      preferred_staff: sarah.id,
+      preferred_service: hairColor.id,
+      marketing_consent: true,
+      referral_source: "Google Search",
+      notes:
+        "Prefers afternoon appointments. Allergic to certain hair products.",
+    },
+    {
+      name: "David Chen",
+      phone: "+15559876543",
+      email: "david.chen@email.com",
+      total_bookings: 15,
+      total_spent: 125000, // $1,250 - VIP
+      last_booking_at: new Date(2024, 11, 15),
+      preferred_staff: sarah.id,
+      preferred_service: haircut.id,
+      marketing_consent: true,
+      referral_source: "Word of mouth",
+      notes: "Regular customer. Prefers Sarah for all services.",
+    },
+    {
+      name: "Sarah Johnson",
+      phone: "+15555551234",
+      total_bookings: 3,
+      total_spent: 19500, // $195
+      last_booking_at: new Date(2024, 10, 20),
+      marketing_consent: false,
+      referral_source: "Walk-in",
+    },
+    {
+      name: "Michael Rodriguez",
+      phone: "+15554567890",
+      email: "mike.r@email.com",
+      total_bookings: 6,
+      total_spent: 52000, // $520 - Gold
+      last_booking_at: new Date(2024, 9, 15), // Inactive (older than 30 days)
+      preferred_staff: mike.id,
+      preferred_service: haircut.id,
+      marketing_consent: true,
+      referral_source: "Instagram",
+      notes: "Quick appointments, always on time.",
+    },
+    {
+      name: "Lisa Thompson",
+      phone: "+15557891234",
+      email: "lisa.t@email.com",
+      total_bookings: 2,
+      total_spent: 15000, // $150 - New customer
+      last_booking_at: new Date(), // Today
+      preferred_staff: lisa.id,
+      preferred_service: highlights.id,
+      marketing_consent: true,
+      referral_source: "Facebook",
+      notes: "New customer, very happy with service.",
+    },
+  ];
+
+  for (const customerData of customers) {
+    await prisma.customer.create({
+      data: customerData,
+    });
+  }
+
   console.log("✅ Seed completed successfully!");
   console.log("👨‍💼 Admin: admin@beautibook.com / admin123");
   console.log("👩‍💼 Staff Sarah: sarah@beautibook.com / sarah123");

@@ -35,7 +35,10 @@ export class BookingHoldService {
     slotDateTime: Date
   ): Promise<BookingHold> {
     try {
-      // Check if slot is already held or booked
+      // Release any existing hold for this session FIRST
+      await this.releaseHoldBySession(sessionId);
+
+      // Then check if slot is available (after releasing our own hold)
       const existingHold = await this.checkSlotAvailability(
         staffId,
         slotDateTime
@@ -43,9 +46,6 @@ export class BookingHoldService {
       if (!existingHold.available) {
         throw new Error(existingHold.reason || "Slot is not available");
       }
-
-      // Release any existing hold for this session
-      await this.releaseHoldBySession(sessionId);
 
       // Create 5-minute expiration time
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
@@ -258,6 +258,30 @@ export class BookingHoldService {
   }
 
   /**
+   * Get hold by ID
+   */
+  async getHoldById(holdId: string): Promise<BookingHold | null> {
+    try {
+      return await this.prisma.bookingHold.findUnique({
+        where: {
+          id: holdId,
+        },
+        include: {
+          staff: {
+            include: {
+              user: true,
+            },
+          },
+          service: true,
+        },
+      });
+    } catch (error) {
+      console.error("Error getting hold by ID:", error);
+      return null;
+    }
+  }
+
+  /**
    * Schedule automatic hold cleanup following backend.mdc setTimeout pattern
    */
   private scheduleHoldCleanup(holdId: string, sessionId: string): void {
@@ -294,7 +318,7 @@ export class BookingHoldService {
         console.error("Error in hold cleanup:", error);
         this.holdTimeouts.delete(holdId);
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 5 * 60 * 1000 + 30 * 1000); // 5 minutes + 30 second grace period
 
     // Track timeout for manual cleanup if needed
     this.holdTimeouts.set(holdId, timeoutId);
@@ -416,4 +440,3 @@ export class BookingHoldService {
     }
   }
 }
-

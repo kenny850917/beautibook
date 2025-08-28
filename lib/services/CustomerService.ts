@@ -68,26 +68,55 @@ export class CustomerService {
   ): Promise<Customer> {
     const normalizedPhone = this.normalizePhone(data.phone);
 
-    // TODO: Implement once Prisma client is regenerated with Customer model
-    // For now, return a mock customer to prevent linter errors
-    const mockCustomer: Customer = {
-      id: "temp_" + Date.now(),
-      name: data.name,
-      phone: normalizedPhone,
-      email: data.email || null,
-      total_bookings: 0,
-      total_spent: 0,
-      last_booking_at: null,
-      preferred_staff: null,
-      preferred_service: null,
-      marketing_consent: data.marketingConsent || false,
-      referral_source: data.referralSource || null,
-      notes: null,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
+    try {
+      // First try to find existing customer by phone
+      let customer = await this.prisma.customer.findUnique({
+        where: { phone: normalizedPhone },
+      });
 
-    return mockCustomer;
+      if (customer) {
+        // Update existing customer with any new information
+        customer = await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: {
+            name: data.name, // Update name in case it changed
+            email: data.email || customer.email, // Keep existing email if new one not provided
+            marketing_consent:
+              data.marketingConsent ?? customer.marketing_consent,
+            referral_source: data.referralSource || customer.referral_source,
+            updated_at: new Date(),
+          },
+        });
+
+        console.log(
+          `Found existing customer: ${customer.name} (${customer.phone})`
+        );
+        return customer;
+      }
+
+      // Create new customer if not found
+      customer = await this.prisma.customer.create({
+        data: {
+          name: data.name,
+          phone: normalizedPhone,
+          email: data.email || null,
+          total_bookings: 0,
+          total_spent: 0,
+          last_booking_at: null,
+          preferred_staff: null,
+          preferred_service: null,
+          marketing_consent: data.marketingConsent || false,
+          referral_source: data.referralSource || null,
+          notes: null,
+        },
+      });
+
+      console.log(`Created new customer: ${customer.name} (${customer.phone})`);
+      return customer;
+    } catch (error) {
+      console.error("Error finding/creating customer:", error);
+      throw new Error("Failed to create customer record");
+    }
   }
 
   /**
@@ -117,14 +146,53 @@ export class CustomerService {
   }
 
   /**
-   * Update customer after a new booking
+   * Update customer statistics after a new booking
    */
   async updateCustomerAfterBooking(
     customerId: string,
-    booking: Booking & { service: { id: string }; staff: { id: string } }
+    booking: {
+      final_price: number;
+      slot_datetime: Date;
+      service_id: string;
+      staff_id: string;
+    }
   ): Promise<void> {
-    // TODO: Implement once Prisma client is regenerated
-    return;
+    try {
+      // Get current customer data
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+      });
+
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
+
+      // Calculate new statistics
+      const newTotalBookings = customer.total_bookings + 1;
+      const newTotalSpent = customer.total_spent + booking.final_price;
+
+      // Update customer record with new statistics
+      await this.prisma.customer.update({
+        where: { id: customerId },
+        data: {
+          total_bookings: newTotalBookings,
+          total_spent: newTotalSpent,
+          last_booking_at: booking.slot_datetime,
+          preferred_staff: booking.staff_id, // Update preferred staff to most recent
+          preferred_service: booking.service_id, // Update preferred service to most recent
+          updated_at: new Date(),
+        },
+      });
+
+      console.log(
+        `Updated customer stats: ${
+          customer.name
+        } - ${newTotalBookings} bookings, $${newTotalSpent / 100} spent`
+      );
+    } catch (error) {
+      console.error("Error updating customer after booking:", error);
+      throw error;
+    }
   }
 
   /**
@@ -271,5 +339,181 @@ export class CustomerService {
   ): Promise<void> {
     // TODO: Implement once Prisma client is regenerated
     return;
+  }
+
+  /**
+   * Get customers with filtering and pagination for admin dashboard
+   */
+  async getCustomersWithFiltering(filters: {
+    search: string;
+    filter: "all" | "vip" | "gold" | "regular" | "new" | "inactive";
+    limit: number;
+    offset: number;
+  }) {
+    const { search, filter, limit, offset } = filters;
+
+    // Build where clause for search
+    const searchWhere = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { phone: { contains: search } },
+            { email: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+
+    // Build where clause for filtering
+    let filterWhere = {};
+    const now = new Date();
+
+    switch (filter) {
+      case "vip":
+        filterWhere = { total_spent: { gte: 100000 } }; // $1000+
+        break;
+      case "gold":
+        filterWhere = {
+          total_spent: { gte: 50000, lt: 100000 }, // $500-$999
+        };
+        break;
+      case "regular":
+        filterWhere = {
+          total_bookings: { gte: 5 },
+          total_spent: { lt: 50000 },
+        };
+        break;
+      case "new":
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filterWhere = {
+          created_at: { gte: sevenDaysAgo },
+          total_bookings: { lt: 5 },
+        };
+        break;
+      case "inactive":
+        const thirtyDaysAgo = new Date(
+          now.getTime() - 30 * 24 * 60 * 60 * 1000
+        );
+        filterWhere = {
+          last_booking_at: { lt: thirtyDaysAgo },
+        };
+        break;
+      default:
+        // "all" - no additional filtering
+        break;
+    }
+
+    const customers = await this.prisma.customer.findMany({
+      where: {
+        ...searchWhere,
+        ...filterWhere,
+      },
+      orderBy: [{ total_spent: "desc" }, { created_at: "desc" }],
+      take: limit,
+      skip: offset,
+    });
+
+    return customers;
+  }
+
+  /**
+   * Get customer count with filtering for pagination
+   */
+  async getCustomerCount(filters: {
+    search: string;
+    filter: "all" | "vip" | "gold" | "regular" | "new" | "inactive";
+  }): Promise<number> {
+    const { search, filter } = filters;
+
+    // Build where clause for search
+    const searchWhere = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { phone: { contains: search } },
+            { email: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+
+    // Build where clause for filtering (same logic as above)
+    let filterWhere = {};
+    const now = new Date();
+
+    switch (filter) {
+      case "vip":
+        filterWhere = { total_spent: { gte: 100000 } };
+        break;
+      case "gold":
+        filterWhere = {
+          total_spent: { gte: 50000, lt: 100000 },
+        };
+        break;
+      case "regular":
+        filterWhere = {
+          total_bookings: { gte: 5 },
+          total_spent: { lt: 50000 },
+        };
+        break;
+      case "new":
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filterWhere = {
+          created_at: { gte: sevenDaysAgo },
+          total_bookings: { lt: 5 },
+        };
+        break;
+      case "inactive":
+        const thirtyDaysAgo = new Date(
+          now.getTime() - 30 * 24 * 60 * 60 * 1000
+        );
+        filterWhere = {
+          last_booking_at: { lt: thirtyDaysAgo },
+        };
+        break;
+      default:
+        // "all" - no additional filtering
+        break;
+    }
+
+    const count = await this.prisma.customer.count({
+      where: {
+        ...searchWhere,
+        ...filterWhere,
+      },
+    });
+
+    return count;
+  }
+
+  /**
+   * Get customer with full booking history for detail view
+   */
+  async getCustomerWithBookingHistory(customerId: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      include: {
+        bookings: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                name: true,
+                duration_minutes: true,
+              },
+            },
+            staff: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            slot_datetime: "desc",
+          },
+        },
+      },
+    });
+
+    return customer;
   }
 }

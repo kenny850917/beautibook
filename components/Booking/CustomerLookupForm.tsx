@@ -212,7 +212,7 @@ export default function CustomerLookupForm({
               </h3>
               <div className="mt-1 text-sm text-green-700">
                 <p>
-                  You've booked with us{" "}
+                  You&apos;ve booked with us{" "}
                   {customerSuggestion.customer.total_bookings} time
                   {customerSuggestion.customer.total_bookings !== 1 ? "s" : ""}.
                   {customerSuggestion.customer.last_booking_at && (
@@ -274,7 +274,8 @@ export default function CustomerLookupForm({
           )}
         </div>
         <p className="mt-1 text-sm text-gray-500">
-          We'll use this to find your booking history and send confirmations
+          We&apos;ll use this to find your booking history and send
+          confirmations
         </p>
       </div>
 
@@ -379,4 +380,3 @@ export default function CustomerLookupForm({
     </div>
   );
 }
-

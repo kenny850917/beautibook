@@ -65,9 +65,10 @@ export class BookingWithCRMService {
 
     // Step 4: Update customer statistics
     await this.customerService.updateCustomerAfterBooking(customer.id, {
-      ...booking,
-      service: { id: serviceId },
-      staff: { id: staffId },
+      final_price: booking.final_price,
+      slot_datetime: booking.slot_datetime,
+      service_id: serviceId,
+      staff_id: staffId,
     });
 
     // Step 5: Send confirmation email with customer context
@@ -146,4 +147,3 @@ export class BookingWithCRMService {
     return null;
   }
 }
-

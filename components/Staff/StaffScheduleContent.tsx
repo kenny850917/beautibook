@@ -40,6 +40,30 @@ interface DayStats {
   hours: number;
 }
 
+interface StaffAppointmentData {
+  id: string;
+  title: string;
+  staff_id: string;
+  service_id: string;
+  slot_datetime: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  customer_id: string | null;
+  final_price: number;
+  created_at: string;
+  staff: {
+    id: string;
+    name: string;
+  };
+  service: {
+    id: string;
+    name: string;
+    duration_minutes: number;
+    base_price: number;
+  };
+}
+
 // Transform AppointmentEvent to CalendarEvent for BaseCalendar compatibility
 const transformToCalendarEvents = (
   appointments: AppointmentEvent[]
@@ -86,68 +110,43 @@ export default function StaffScheduleContent() {
       try {
         setIsLoading(true);
 
-        // For MVP, use mock data until API endpoints are created
-        // TODO: Replace with actual API calls that filter by staff ID
-        const mockEvents: AppointmentEvent[] = [
-          {
-            id: "1",
-            title: "Haircut - John Doe",
-            start: new Date(2024, 11, 20, 9, 0),
-            end: new Date(2024, 11, 20, 10, 0),
-            resource: {
-              serviceName: "Haircut",
-              customerName: "John Doe",
-              customerPhone: "(555) 123-4567",
-              price: 7500, // $75.00
-              status: "confirmed",
-              notes: "Regular client, prefers shorter on sides",
-            },
-          },
-          {
-            id: "2",
-            title: "Hair Color - Jane Smith",
-            start: new Date(2024, 11, 20, 10, 30),
-            end: new Date(2024, 11, 20, 12, 30),
-            resource: {
-              serviceName: "Hair Color",
-              customerName: "Jane Smith",
-              customerPhone: "(555) 987-6543",
-              price: 13000, // $130.00
-              status: "confirmed",
-              notes: "Blonde highlights, regular client",
-            },
-          },
-          {
-            id: "3",
-            title: "Highlights - Emily Johnson",
-            start: new Date(2024, 11, 20, 14, 0),
-            end: new Date(2024, 11, 20, 17, 0),
-            resource: {
-              serviceName: "Highlights",
-              customerName: "Emily Johnson",
-              customerPhone: "(555) 456-7890",
-              price: 16500, // $165.00
-              status: "pending",
-              notes: "First-time client, consultation needed",
-            },
-          },
-          {
-            id: "4",
-            title: "Haircut - Michael Brown",
-            start: new Date(2024, 11, 21, 11, 0),
-            end: new Date(2024, 11, 21, 12, 0),
-            resource: {
-              serviceName: "Haircut",
-              customerName: "Michael Brown",
-              customerPhone: "(555) 321-0987",
-              price: 7500,
-              status: "confirmed",
-            },
-          },
-        ];
+        // Fetch real staff appointments from API
+        const response = await fetch("/api/staff/appointments?status=all");
 
-        // Calculate today's stats
-        const todayEvents = mockEvents.filter((event) => isToday(event.start));
+        if (!response.ok) {
+          throw new Error("Failed to fetch appointments");
+        }
+
+        const data = await response.json();
+
+        // Transform API data to AppointmentEvent format
+        const realEvents: AppointmentEvent[] = data.appointments.map(
+          (appointment: StaffAppointmentData) => {
+            const startTime = new Date(appointment.slot_datetime);
+            const endTime = new Date(
+              startTime.getTime() +
+                appointment.service.duration_minutes * 60 * 1000
+            );
+
+            return {
+              id: appointment.id,
+              title: `${appointment.service.name} - ${appointment.customer_name}`,
+              start: startTime,
+              end: endTime,
+              resource: {
+                serviceName: appointment.service.name,
+                customerName: appointment.customer_name,
+                customerPhone: appointment.customer_phone,
+                price: appointment.final_price,
+                status: "confirmed", // All real bookings are confirmed
+                notes: undefined, // Notes not implemented yet
+              },
+            };
+          }
+        );
+
+        // Calculate today's stats from real data
+        const todayEvents = realEvents.filter((event) => isToday(event.start));
 
         const stats = {
           appointments: todayEvents.length,
@@ -162,10 +161,18 @@ export default function StaffScheduleContent() {
           }, 0),
         };
 
-        setEvents(mockEvents);
+        setEvents(realEvents);
         setTodayStats(stats);
       } catch (error) {
         console.error("Error loading appointments:", error);
+
+        // Fallback to empty data on error
+        setEvents([]);
+        setTodayStats({
+          appointments: 0,
+          revenue: 0,
+          hours: 0,
+        });
       } finally {
         setIsLoading(false);
       }

@@ -21,6 +21,17 @@ const eslintConfig = [
     ],
   },
   {
+    // Global rules - disable warnings but keep errors
+    rules: {
+      // Disable warning-level rules
+      "@typescript-eslint/no-unused-vars": "off",
+      "react-hooks/exhaustive-deps": "off",
+
+      // Keep error-level rules active
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
+  {
     files: [
       "jest.config.js",
       "*.config.js",

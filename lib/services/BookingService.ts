@@ -32,7 +32,9 @@ export class BookingService {
     slotDateTime: Date,
     customerName: string,
     customerPhone: string,
-    sessionId?: string
+    sessionId?: string,
+    customerId?: string,
+    customerEmail?: string
   ) {
     return await prisma.$transaction(async (tx) => {
       // 1. Verify staff can perform this service
@@ -148,6 +150,8 @@ export class BookingService {
           slot_datetime: slotDateTime,
           customer_name: customerName,
           customer_phone: customerPhone,
+          customer_id: customerId || null,
+          customer_email: customerEmail || null,
           final_price: finalPrice,
         },
         include: {

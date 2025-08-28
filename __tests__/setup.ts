@@ -6,22 +6,117 @@
 import { PrismaClient } from "@prisma/client";
 import { mockDeep, mockReset } from "jest-mock-extended";
 
+// Mock Next.js server objects for API route tests
+global.Request = class Request {
+  constructor(public url: string, public init?: RequestInit) {}
+  json() {
+    return Promise.resolve({});
+  }
+  text() {
+    return Promise.resolve("");
+  }
+} as any;
+
+global.Response = class Response {
+  constructor(public body?: any, public init?: ResponseInit) {}
+  json() {
+    return Promise.resolve({});
+  }
+  text() {
+    return Promise.resolve("");
+  }
+} as any;
+
+global.Headers = class Headers {
+  private headers = new Map();
+  constructor(init?: HeadersInit) {
+    if (init) {
+      if (Array.isArray(init)) {
+        init.forEach(([key, value]) => this.headers.set(key, value));
+      } else if (init instanceof Headers) {
+        // Handle Headers instance
+      } else {
+        Object.entries(init).forEach(([key, value]) =>
+          this.headers.set(key, value)
+        );
+      }
+    }
+  }
+  get(name: string) {
+    return this.headers.get(name);
+  }
+  set(name: string, value: string) {
+    this.headers.set(name, value);
+  }
+} as any;
+
+// Mock NextRequest specifically
+jest.mock("next/server", () => {
+  const actualNextServer = jest.requireActual("next/server");
+
+  return {
+    ...actualNextServer,
+    NextRequest: class NextRequest {
+      url: string;
+      method: string;
+      private bodyData: any;
+
+      constructor(url: string, init?: RequestInit) {
+        this.url = url;
+        this.method = init?.method || "GET";
+        this.bodyData = init?.body;
+      }
+
+      async json() {
+        if (typeof this.bodyData === "string") {
+          return JSON.parse(this.bodyData);
+        }
+        return this.bodyData || {};
+      }
+
+      async text() {
+        if (typeof this.bodyData === "string") {
+          return this.bodyData;
+        }
+        return JSON.stringify(this.bodyData || {});
+      }
+    },
+    NextResponse: {
+      json: (data: any, init?: ResponseInit) => ({
+        json: () => Promise.resolve(data),
+        status: init?.status || 200,
+        headers: new Headers(init?.headers),
+      }),
+    },
+  };
+});
+
 export const mockPrisma = mockDeep<PrismaClient>();
 
 // Mock PrismaService
-jest.mock("../lib/services/PrismaService", () => ({
+jest.mock("@/lib/services/PrismaService", () => ({
   PrismaService: {
     getInstance: jest.fn(() => mockPrisma),
   },
+}));
+
+// Mock NextAuth for API route tests
+jest.mock("next-auth", () => ({
+  getServerSession: jest.fn(),
 }));
 
 beforeEach(() => {
   mockReset(mockPrisma);
 });
 
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 // Mock Date.now for consistent testing
 export const mockDateNow = (date: Date) => {
-  jest.spyOn(Date, "now").mockReturnValue(date.getTime());
+  jest.useFakeTimers();
+  jest.setSystemTime(date);
 };
 
 // Mock setTimeout for hold expiration testing

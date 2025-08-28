@@ -162,37 +162,81 @@ export default function BaseCalendar({
     [currentView, views]
   );
 
-  // Custom event component with mobile-friendly styling
-  const CustomEvent = useCallback(({ event }: { event: CalendarEvent }) => {
+  // Google Calendar-style event prop getter
+  const eventPropGetter = useCallback((event: CalendarEvent) => {
     const eventType = event.resource?.type || "booking";
     const status = event.resource?.status || "confirmed";
 
-    const getEventStyles = () => {
-      switch (eventType) {
-        case "booking":
-          return status === "confirmed"
-            ? "bg-primary-500 text-white border-primary-600"
-            : "bg-yellow-500 text-white border-yellow-600";
-        case "hold":
-          return "bg-orange-400 text-white border-orange-500";
-        case "availability":
-          return "bg-green-500 text-white border-green-600";
-        default:
-          return "bg-gray-500 text-white border-gray-600";
-      }
+    let className = "";
+    const style: React.CSSProperties = {};
+
+    // Determine event styling based on type and status
+    switch (eventType) {
+      case "booking":
+        if (status === "confirmed") {
+          className = "event-primary";
+        } else if (status === "pending") {
+          className = "event-warning";
+        } else if (status === "cancelled") {
+          className = "event-danger";
+        }
+        break;
+      case "hold":
+        className = "event-warning";
+        break;
+      case "availability":
+        className = "event-secondary";
+        break;
+      default:
+        className = "event-info";
+    }
+
+    return {
+      className,
+      style,
     };
+  }, []);
+
+  // Custom event component with Google Calendar styling
+  const CustomEvent = useCallback(({ event }: { event: CalendarEvent }) => {
+    const eventType = event.resource?.type || "booking";
+
+    // Format time for display
+    const startTime = moment(event.start).format("h:mm A");
+    const endTime = moment(event.end).format("h:mm A");
+    const duration = moment(event.end).diff(moment(event.start), "minutes");
 
     return (
       <div
-        className={`px-2 py-1 rounded text-xs font-medium border ${getEventStyles()}`}
+        className="h-full flex flex-col justify-center"
         style={{
-          height: "100%",
           minHeight: "24px",
-          display: "flex",
-          alignItems: "center",
+          padding: "2px 0",
         }}
       >
-        <span className="truncate">{event.title}</span>
+        <div className="rbc-event-label font-medium">{event.title}</div>
+        {duration >= 60 && (
+          <div
+            className="text-xs opacity-90 mt-1"
+            style={{
+              fontSize: "11px",
+              lineHeight: "1.2",
+            }}
+          >
+            {startTime} - {endTime}
+          </div>
+        )}
+        {eventType === "booking" && event.resource?.customerId && (
+          <div
+            className="text-xs opacity-80 mt-1"
+            style={{
+              fontSize: "10px",
+              lineHeight: "1.2",
+            }}
+          >
+            Customer: {event.resource.customerId}
+          </div>
+        )}
       </div>
     );
   }, []);
@@ -263,113 +307,378 @@ export default function BaseCalendar({
       style={style}
     >
       <style jsx global>{`
-        /* Mobile-optimized calendar styles */
+        /* === MODERN CALENDAR DESIGN - GOOGLE CALENDAR INSPIRED === */
+
+        /* Base Calendar Styles */
         .rbc-calendar {
           font-size: 14px;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            sans-serif;
+          background: #ffffff;
+          border: 1px solid #e8eaed;
+          border-radius: 8px;
+          overflow: hidden;
         }
 
-        .rbc-time-view .rbc-time-gutter,
-        .rbc-time-view .rbc-time-content {
-          min-height: 44px;
+        /* === FIX: ALL-DAY EVENTS ROW ALIGNMENT === */
+        /* Hide all-day events row if not needed - removes grey line issue */
+        .rbc-allday-cell {
+          display: none;
         }
 
-        .rbc-time-slot {
-          min-height: 44px !important;
-          border-bottom: 1px solid #f3f4f6;
+        /* If you want to keep all-day events, use this instead: */
+        /*
+        .rbc-allday-cell {
+          min-height: 32px;
+          border-bottom: 1px solid #e8eaed;
+          background: #f8f9fa;
         }
 
-        .rbc-event {
-          border-radius: 6px;
-          border: none;
-          font-weight: 500;
-          font-size: 12px;
-          min-height: 24px;
+        .rbc-row.rbc-time-header-cell {
+          display: flex;
+          flex: 1;
+          min-width: 0;
         }
 
-        .rbc-event:focus {
-          outline: 2px solid #a855f7;
-          outline-offset: 2px;
+        .rbc-allday-cell .rbc-row-bg,
+        .rbc-time-header-cell .rbc-row-bg {
+          width: 100%;
+          display: flex;
         }
 
+        .rbc-allday-cell .rbc-row-bg .rbc-day-bg,
+        .rbc-time-header-cell .rbc-header {
+          flex: 1 0 0%;
+          min-width: 0;
+        }
+        */
+
+        /* === HEADER IMPROVEMENTS === */
         .rbc-time-header {
-          border-bottom: 2px solid #e5e7eb;
+          border-bottom: 1px solid #e8eaed;
+          background: #ffffff;
         }
 
         .rbc-header {
-          font-weight: 600;
-          color: #374151;
-          padding: 8px;
+          font-weight: 500;
+          color: #3c4043;
+          padding: 12px 8px;
+          font-size: 13px;
+          border-right: 1px solid #e8eaed;
         }
 
+        .rbc-header:last-child {
+          border-right: none;
+        }
+
+        /* === TIME SLOTS OPTIMIZATION === */
+        .rbc-time-view .rbc-time-gutter,
+        .rbc-time-view .rbc-time-content {
+          min-height: 48px;
+        }
+
+        .rbc-time-slot {
+          min-height: 48px !important;
+          border-bottom: 1px solid #f1f3f4;
+          transition: background-color 0.15s ease;
+        }
+
+        .rbc-timeslot-group {
+          border-bottom: 1px solid #e8eaed;
+        }
+
+        .rbc-time-gutter .rbc-timeslot-group {
+          border-bottom: none;
+        }
+
+        /* === EVENT STYLING - AUTHENTIC GOOGLE CALENDAR LOOK === */
+        .rbc-event {
+          border-radius: 8px;
+          border: none;
+          font-weight: 500;
+          font-size: 13px;
+          min-height: 24px;
+          padding: 4px 8px;
+          box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.302),
+            0 4px 8px 3px rgba(60, 64, 67, 0.149);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          color: #1f1f1f;
+          line-height: 1.4;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .rbc-event:hover {
+          box-shadow: 0 2px 6px 2px rgba(60, 64, 67, 0.15),
+            0 8px 24px 4px rgba(60, 64, 67, 0.15);
+          transform: translateY(-1px);
+        }
+
+        .rbc-event:focus {
+          outline: 2px solid #1a73e8;
+          outline-offset: 2px;
+        }
+
+        .rbc-selected {
+          box-shadow: 0 2px 6px 2px rgba(26, 115, 232, 0.15),
+            0 8px 24px 4px rgba(26, 115, 232, 0.15);
+        }
+
+        /* Google Calendar-style event text */
+        .rbc-event-label {
+          font-weight: 500;
+          font-size: 13px;
+          color: inherit;
+          line-height: 1.4;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* Different event types with Google Calendar colors */
+        .rbc-event.event-primary {
+          background-color: #1a73e8;
+          color: white;
+        }
+
+        .rbc-event.event-secondary {
+          background-color: #34a853;
+          color: white;
+        }
+
+        .rbc-event.event-warning {
+          background-color: #fbbc04;
+          color: #1f1f1f;
+        }
+
+        .rbc-event.event-danger {
+          background-color: #ea4335;
+          color: white;
+        }
+
+        .rbc-event.event-info {
+          background-color: #4285f4;
+          color: white;
+        }
+
+        .rbc-event.event-success {
+          background-color: #0d7377;
+          color: white;
+        }
+
+        /* Subtle gradient overlay for depth */
+        .rbc-event::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(255, 255, 255, 0) 50%
+          );
+          border-radius: 8px;
+          pointer-events: none;
+        }
+
+        /* === TODAY HIGHLIGHTING === */
         .rbc-today {
-          background-color: #faf5ff;
+          background-color: #e8f0fe;
         }
 
         .rbc-off-range-bg {
-          background-color: #f9fafb;
+          background-color: #f8f9fa;
         }
 
-        /* Touch-friendly month view */
+        /* === TOUCH-FRIENDLY INTERACTIONS === */
+        .rbc-day-slot .rbc-time-slot {
+          cursor: pointer;
+          min-height: 48px;
+        }
+
+        .rbc-day-slot .rbc-time-slot:hover {
+          background-color: #f8f9fa;
+        }
+
+        .rbc-selectable .rbc-time-slot {
+          cursor: crosshair;
+        }
+
+        /* === MONTH VIEW OPTIMIZATIONS === */
         .rbc-month-view .rbc-date-cell {
-          min-height: 44px;
+          min-height: 48px;
           padding: 4px;
+          border-right: 1px solid #e8eaed;
+        }
+
+        .rbc-month-view .rbc-date-cell:last-child {
+          border-right: none;
         }
 
         .rbc-month-view .rbc-event {
           margin: 1px;
-          padding: 2px 4px;
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 11px;
         }
 
-        /* Week view optimizations */
-        .rbc-time-view .rbc-time-gutter .rbc-timeslot-group {
-          border-bottom: 1px solid #e5e7eb;
+        .rbc-month-view .rbc-row {
+          border-bottom: 1px solid #e8eaed;
         }
 
-        /* Day view optimizations */
-        .rbc-day-slot .rbc-time-slot {
-          cursor: pointer;
+        .rbc-month-view .rbc-row:last-child {
+          border-bottom: none;
         }
 
-        .rbc-day-slot .rbc-time-slot:hover {
-          background-color: #f3f4f6;
+        /* === WEEK VIEW OPTIMIZATIONS === */
+        .rbc-time-view .rbc-time-gutter {
+          background: #ffffff;
+          border-right: 1px solid #e8eaed;
         }
 
-        /* Custom scrollbar for mobile */
+        .rbc-time-view .rbc-time-content {
+          border-left: none;
+        }
+
+        .rbc-time-view .rbc-day-slot {
+          border-right: 1px solid #e8eaed;
+        }
+
+        .rbc-time-view .rbc-day-slot:last-child {
+          border-right: none;
+        }
+
+        /* === CUSTOM SCROLLBAR === */
         .rbc-time-content::-webkit-scrollbar {
-          width: 8px;
+          width: 12px;
         }
 
         .rbc-time-content::-webkit-scrollbar-track {
-          background: #f1f5f9;
+          background: #f8f9fa;
+          border-radius: 6px;
         }
 
         .rbc-time-content::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 4px;
+          background: #dadce0;
+          border-radius: 6px;
+          border: 2px solid #f8f9fa;
         }
 
         .rbc-time-content::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
+          background: #bdc1c6;
         }
 
+        /* === MOBILE RESPONSIVENESS === */
         @media (max-width: 640px) {
           .rbc-calendar {
             font-size: 12px;
+            border-radius: 0;
+            border: none;
           }
 
           .rbc-toolbar {
             flex-direction: column;
             align-items: stretch;
+            padding: 8px;
           }
 
           .rbc-toolbar-label {
             text-align: center;
             margin: 8px 0;
+            font-size: 16px;
+            font-weight: 500;
           }
 
           .rbc-time-header .rbc-header {
             font-size: 11px;
-            padding: 4px 2px;
+            padding: 8px 4px;
+          }
+
+          .rbc-time-slot {
+            min-height: 44px !important;
+          }
+
+          .rbc-event {
+            font-size: 11px;
+            padding: 1px 4px;
+          }
+
+          .rbc-day-slot .rbc-time-slot {
+            min-height: 44px;
+          }
+        }
+
+        /* === LOADING STATES === */
+        .rbc-calendar.loading {
+          opacity: 0.7;
+          pointer-events: none;
+        }
+
+        .rbc-calendar.loading::after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 24px;
+          height: 24px;
+          margin: -12px 0 0 -12px;
+          border: 2px solid #e8eaed;
+          border-top: 2px solid #1a73e8;
+          border-radius: 50%;
+          animation: calendar-spin 1s linear infinite;
+        }
+
+        @keyframes calendar-spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        /* === ACCESSIBILITY IMPROVEMENTS === */
+        .rbc-event:focus-visible {
+          outline: 2px solid #1a73e8;
+          outline-offset: 2px;
+        }
+
+        .rbc-time-slot:focus-visible {
+          outline: 2px solid #1a73e8;
+          outline-offset: -2px;
+          background-color: #e8f0fe;
+        }
+
+        /* === HIGH CONTRAST MODE SUPPORT === */
+        @media (prefers-contrast: high) {
+          .rbc-calendar {
+            border-color: #000000;
+          }
+
+          .rbc-event {
+            border: 1px solid #000000;
+          }
+
+          .rbc-time-slot {
+            border-color: #000000;
+          }
+        }
+
+        /* === REDUCED MOTION SUPPORT === */
+        @media (prefers-reduced-motion: reduce) {
+          .rbc-event {
+            transition: none;
+          }
+
+          .rbc-event:hover {
+            transform: none;
+          }
+
+          .calendar-spin {
+            animation: none;
           }
         }
       `}</style>
@@ -392,6 +701,7 @@ export default function BaseCalendar({
         max={max}
         step={step}
         timeslots={timeslots}
+        eventPropGetter={eventPropGetter}
         components={{
           toolbar: CustomToolbar,
           event: CustomEvent,

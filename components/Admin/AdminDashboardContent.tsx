@@ -25,6 +25,30 @@ interface AdminCalendarEvent {
   };
 }
 
+interface BookingData {
+  id: string;
+  staff_id: string;
+  service_id: string;
+  slot_datetime: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  customer_id: string | null;
+  final_price: number;
+  created_at: string;
+  staff: {
+    id: string;
+    name: string;
+    photo_url: string | null;
+  };
+  service: {
+    id: string;
+    name: string;
+    duration_minutes: number;
+    base_price: number;
+  };
+}
+
 export default function AdminDashboardContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [stats, setStats] = useState<DashboardStats>({
@@ -42,48 +66,64 @@ export default function AdminDashboardContent() {
       try {
         setIsLoading(true);
 
-        // For MVP, use mock data until API endpoints are created
-        // TODO: Replace with actual API calls in Phase 4
-        const mockStats: DashboardStats = {
-          todayBookings: 12,
-          weeklyRevenue: 2450,
-          activeStaff: 3,
-          pendingHolds: 2,
+        // Fetch real dashboard stats and bookings
+        const [statsResponse, bookingsResponse] = await Promise.all([
+          fetch("/api/admin/stats"),
+          fetch("/api/admin/bookings?status=week"),
+        ]);
+
+        if (!statsResponse.ok || !bookingsResponse.ok) {
+          throw new Error("Failed to fetch dashboard data");
+        }
+
+        const statsData = await statsResponse.json();
+        const bookingsData = await bookingsResponse.json();
+
+        // Update stats from real API data
+        const realStats: DashboardStats = {
+          todayBookings: statsData.stats.todayBookings,
+          weeklyRevenue: statsData.stats.weeklyRevenue,
+          activeStaff: statsData.stats.activeStaff,
+          pendingHolds: statsData.stats.pendingHolds,
         };
 
-        const mockEvents: AdminCalendarEvent[] = [
-          {
-            id: "1",
-            title: "Sarah - Haircut",
-            start: new Date(2024, 11, 20, 9, 0),
-            end: new Date(2024, 11, 20, 10, 0),
-            resource: {
-              type: "booking",
-              staffId: "staff_1",
-              serviceId: "service_1",
-              customerId: "customer_1",
-              status: "confirmed",
-            },
-          },
-          {
-            id: "2",
-            title: "Mike - Hair Color",
-            start: new Date(2024, 11, 20, 10, 30),
-            end: new Date(2024, 11, 20, 12, 30),
-            resource: {
-              type: "booking",
-              staffId: "staff_2",
-              serviceId: "service_2",
-              customerId: "customer_2",
-              status: "confirmed",
-            },
-          },
-        ];
+        // Convert real bookings to calendar events
+        const realEvents: AdminCalendarEvent[] = bookingsData.bookings.map(
+          (booking: BookingData) => {
+            const startTime = new Date(booking.slot_datetime);
+            const endTime = new Date(
+              startTime.getTime() + booking.service.duration_minutes * 60 * 1000
+            );
 
-        setStats(mockStats);
-        setEvents(mockEvents);
+            return {
+              id: booking.id,
+              title: `${booking.service.name} - ${booking.customer_name}`,
+              start: startTime,
+              end: endTime,
+              resource: {
+                type: "booking" as const,
+                staffId: booking.staff_id,
+                serviceId: booking.service_id,
+                customerId: booking.customer_id,
+                status: "confirmed" as const,
+              },
+            };
+          }
+        );
+
+        setStats(realStats);
+        setEvents(realEvents);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
+
+        // Fallback to empty data on error
+        setStats({
+          todayBookings: 0,
+          weeklyRevenue: 0,
+          activeStaff: 0,
+          pendingHolds: 0,
+        });
+        setEvents([]);
       } finally {
         setIsLoading(false);
       }

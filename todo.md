@@ -201,7 +201,7 @@ Beauty salon booking system with 5-minute hold system, mobile-first design, and 
 
 ---
 
-## ⚡ Phase 4: Booking Engine & Hold System (Days 6-7)
+## ⚡ Phase 4: Booking Engine & Hold System (Days 6-7) ✅ COMPLETED
 
 ### 5-Minute Hold System
 
@@ -244,56 +244,78 @@ Beauty salon booking system with 5-minute hold system, mobile-first design, and 
 
 ---
 
-## 📱 Phase 5: Customer Booking Flow (Days 8-9)
+## 📱 Phase 5: Customer Booking Flow (Days 8-9) ✅ COMPLETED
 
 ### Customer Booking Interface
 
-- [ ] **Service selection page** (`app/booking/page.tsx`)
+- [x] **Service selection page** (`app/booking/page.tsx`)
 
-  - [ ] Mobile-optimized service cards with images
-  - [ ] Clear pricing display with staff variations
-  - [ ] Large touch targets for service selection
-  - [ ] Service duration and description display
+  - [x] Mobile-optimized service cards with images
+  - [x] Clear pricing display with staff variations
+  - [x] Large touch targets for service selection
+  - [x] Service duration and description display
 
-- [ ] **Staff selection page** (`app/booking/staff/page.tsx`)
+- [x] **Staff selection page** (`app/booking/staff/page.tsx`)
 
-  - [ ] Staff photo cards with bios and specialties
-  - [ ] Individual pricing display per staff member
-  - [ ] Horizontal scroll for mobile optimization
-  - [ ] Staff availability indicators
+  - [x] Staff photo cards with bios and specialties
+  - [x] Individual pricing display per staff member
+  - [x] Horizontal scroll for mobile optimization
+  - [x] Staff availability indicators
 
-- [ ] **Date & time selection** (`app/booking/datetime/page.tsx`)
-  - [ ] Mobile-native date picker feel
-  - [ ] Swipe between months navigation
-  - [ ] Available time slots with large touch targets
-  - [ ] Real-time availability updates
+- [x] **Date & time selection** (`app/booking/datetime/page.tsx`)
+  - [x] Mobile-native date picker feel
+  - [x] Swipe between months navigation
+  - [x] Available time slots with large touch targets
+  - [x] Real-time availability updates
 
 ### Booking Hold Interface
 
-- [ ] **Hold countdown component** (`components/Booking/HoldCountdown.tsx`)
+- [x] **Hold countdown component** (`components/Booking/HoldCountdown.tsx`)
 
-  - [ ] Prominent 5-minute countdown timer
-  - [ ] Visual progress indicator
-  - [ ] Non-intrusive placement on booking form
-  - [ ] Auto-redirect on expiration
+  - [x] Prominent 5-minute countdown timer
+  - [x] Visual progress indicator
+  - [x] Non-intrusive placement on booking form
+  - [x] Auto-redirect on expiration
 
-- [ ] **Booking form** (`app/booking/confirm/page.tsx`)
-  - [ ] Simple name + phone fields only
-  - [ ] Mobile keyboard optimization (tel input)
-  - [ ] Clear booking summary display
-  - [ ] Large confirm button (44px minimum)
+- [x] **Booking form** (`app/booking/confirm/page.tsx`)
+  - [x] Simple name + phone fields only
+  - [x] Mobile keyboard optimization (tel input)
+  - [x] Clear booking summary display
+  - [x] Large confirm button (44px minimum)
 
 ### Success & Confirmation
 
-- [ ] **Booking confirmation** (`app/booking/success/page.tsx`)
-  - [ ] Success message with booking details
-  - [ ] Add to calendar functionality
-  - [ ] Contact information display
-  - [ ] Return to booking link
+- [x] **Booking confirmation** (`app/booking/success/page.tsx`)
+  - [x] Success message with booking details
+  - [x] Add to calendar functionality
+  - [x] Contact information display
+  - [x] Return to booking link
 
 ---
 
 ## 🔄 Phase 6: Real-time Updates & SSE (Day 10)
+
+### Guest Appointment Lookup
+
+- [ ] **Guest appointment lookup page** (`app/appointments/lookup/page.tsx`)
+
+  - [ ] Simple phone number input form
+  - [ ] Mobile-optimized design with large touch targets
+  - [ ] Loading states and error handling
+  - [ ] Security validation (phone + name verification)
+
+- [ ] **Guest lookup API** (`app/api/appointments/lookup/route.ts`)
+
+  - [ ] POST endpoint for guest appointment search
+  - [ ] Phone number validation and formatting
+  - [ ] Return upcoming and recent appointments
+  - [ ] Include booking details (date, time, service, staff)
+
+- [ ] **Guest appointment display** (`components/Guest/AppointmentLookup.tsx`)
+  - [ ] Display upcoming appointments with countdown
+  - [ ] Show past appointment history
+  - [ ] Contact information for changes/cancellations
+  - [ ] Mobile-friendly appointment cards
 
 ### Server-Sent Events Setup
 

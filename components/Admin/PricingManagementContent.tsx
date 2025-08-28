@@ -24,6 +24,20 @@ interface ServiceWithPricing extends Service {
   staffPricing: StaffPricing[];
   averagePrice: number;
   hasOverrides: boolean;
+  stats: {
+    recentBookings: number;
+    recentRevenue: number;
+    avgBookingValue: number;
+  };
+}
+
+interface ApiSummary {
+  totalServices: number;
+  servicesWithOverrides: number;
+  averageBasePrice: number;
+  averageMarketPrice: number;
+  totalRecentBookings: number;
+  totalRecentRevenue: number;
 }
 
 export default function PricingManagementContent() {
@@ -31,85 +45,36 @@ export default function PricingManagementContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingService, setEditingService] = useState<string | null>(null);
   const [newPrice, setNewPrice] = useState<string>("");
+  const [apiSummary, setApiSummary] = useState<ApiSummary | null>(null);
 
-  // Load pricing data
+  // Load pricing data from real API
   useEffect(() => {
     const loadPricingData = async () => {
       try {
         setIsLoading(true);
 
-        // For MVP, use mock data until API endpoints are created
-        // TODO: Replace with actual API calls in Phase 4
-        const mockServices: ServiceWithPricing[] = [
-          {
-            id: "1",
-            name: "Haircut",
-            duration_minutes: 60,
-            base_price: 6500, // $65.00
-            description: "Classic cut and style",
-            staffPricing: [
-              {
-                id: "sp1",
-                staff_id: "staff1",
-                service_id: "1",
-                custom_price: 7500, // Sarah charges $75
-                staff: { name: "Sarah Johnson" },
-              },
-            ],
-            averagePrice: 7000,
-            hasOverrides: true,
+        const response = await fetch("/api/admin/services", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
           },
-          {
-            id: "2",
-            name: "Hair Color",
-            duration_minutes: 120,
-            base_price: 12000, // $120.00
-            description: "Full color treatment",
-            staffPricing: [
-              {
-                id: "sp2",
-                staff_id: "staff3",
-                service_id: "2",
-                custom_price: 13000, // Lisa charges $130
-                staff: { name: "Lisa Rodriguez" },
-              },
-            ],
-            averagePrice: 12500,
-            hasOverrides: true,
-          },
-          {
-            id: "3",
-            name: "Highlights",
-            duration_minutes: 180,
-            base_price: 15000, // $150.00
-            description: "Partial or full highlights",
-            staffPricing: [
-              {
-                id: "sp3",
-                staff_id: "staff1",
-                service_id: "3",
-                custom_price: 16500, // Sarah charges $165
-                staff: { name: "Sarah Johnson" },
-              },
-            ],
-            averagePrice: 15750,
-            hasOverrides: true,
-          },
-          {
-            id: "4",
-            name: "Blow Dry",
-            duration_minutes: 30,
-            base_price: 3500, // $35.00
-            description: "Shampoo and blow dry styling",
-            staffPricing: [],
-            averagePrice: 3500,
-            hasOverrides: false,
-          },
-        ];
+        });
 
-        setServices(mockServices);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setServices(data.services || []);
+          setApiSummary(data.summary || null);
+        } else {
+          throw new Error(data.error || "Failed to load services");
+        }
       } catch (error) {
         console.error("Error loading pricing data:", error);
+        setServices([]); // Set empty array on error
       } finally {
         setIsLoading(false);
       }
@@ -143,23 +108,47 @@ export default function PricingManagementContent() {
     try {
       const priceInCents = Math.round(parseFloat(newPrice) * 100);
 
-      // TODO: API call to update price
-      console.log(`Updating service ${serviceId} to ${priceInCents} cents`);
+      const response = await fetch(`/api/admin/services/${serviceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          base_price: priceInCents,
+        }),
+      });
 
-      // Update local state
-      setServices((prev) =>
-        prev.map((service) =>
-          service.id === serviceId
-            ? { ...service, base_price: priceInCents }
-            : service
-        )
-      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state with the response
+        setServices((prev) =>
+          prev.map((service) =>
+            service.id === serviceId ? data.service : service
+          )
+        );
+      } else {
+        throw new Error(data.error || "Failed to update price");
+      }
 
       setEditingService(null);
       setNewPrice("");
     } catch (error) {
       console.error("Error saving price:", error);
+      // Optional: Show error message to user
     }
+  };
+
+  const handleManageStaffPricing = (serviceId: string) => {
+    // For MVP, show alert with instructions
+    // TODO: Implement staff pricing modal in future phase
+    alert(
+      `Staff pricing management for service ${serviceId} is coming soon! For now, use the staff management section to adjust individual staff pricing.`
+    );
   };
 
   if (isLoading) {
@@ -216,8 +205,11 @@ export default function PricingManagementContent() {
               </p>
               <p className="text-2xl font-semibold text-gray-900">
                 {formatCurrency(
-                  services.reduce((sum, s) => sum + s.averagePrice, 0) /
-                    services.length
+                  apiSummary?.averageMarketPrice ||
+                    (services.length > 0
+                      ? services.reduce((sum, s) => sum + s.averagePrice, 0) /
+                        services.length
+                      : 0)
                 )}
               </p>
             </div>
@@ -246,7 +238,7 @@ export default function PricingManagementContent() {
                 Total Services
               </p>
               <p className="text-2xl font-semibold text-gray-900">
-                {services.length}
+                {apiSummary?.totalServices || services.length}
               </p>
             </div>
           </div>
@@ -274,7 +266,8 @@ export default function PricingManagementContent() {
                 Price Overrides
               </p>
               <p className="text-2xl font-semibold text-gray-900">
-                {services.filter((s) => s.hasOverrides).length}
+                {apiSummary?.servicesWithOverrides ||
+                  services.filter((s) => s.hasOverrides).length}
               </p>
             </div>
           </div>
@@ -429,7 +422,10 @@ export default function PricingManagementContent() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-purple-600 hover:text-purple-900 min-h-[44px] px-2">
+                    <button
+                      onClick={() => handleManageStaffPricing(service.id)}
+                      className="text-purple-600 hover:text-purple-900 min-h-[44px] px-2"
+                    >
                       Manage Staff Pricing
                     </button>
                   </td>
@@ -482,7 +478,10 @@ export default function PricingManagementContent() {
             )}
 
             <div className="mt-3 pt-3 border-t">
-              <button className="w-full bg-purple-600 text-white px-4 py-2 rounded-md text-sm hover:bg-purple-700 min-h-[44px]">
+              <button
+                onClick={() => handleManageStaffPricing(service.id)}
+                className="w-full bg-purple-600 text-white px-4 py-2 rounded-md text-sm hover:bg-purple-700 min-h-[44px]"
+              >
                 Manage Pricing
               </button>
             </div>
@@ -492,6 +491,3 @@ export default function PricingManagementContent() {
     </div>
   );
 }
-
-
-
