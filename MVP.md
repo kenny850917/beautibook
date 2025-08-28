@@ -43,6 +43,10 @@ Set base salon pricing and override staff pricing
 Edit any staff member's availability schedule
 View master calendar (all staff schedules combined)
 Manage all bookings across entire salon
+Access customer CRM dashboard with guest tracking
+View customer profiles, booking history, and analytics
+Segment customers by value (VIP, Gold, Regular, New)
+Export customer data and marketing lists
 
 Staff Role Capabilities
 
@@ -111,9 +115,11 @@ StaffServicePricing (id, staff_id, service_id, custom_price) // Staff price over
 
 StaffAvailability (id, staff_id, day_of_week, start_time, end_time, override_date)
 
+Customer (id, phone, name, email, total_bookings, total_spent, last_booking_at, preferred_staff, preferred_service, marketing_consent, referral_source, notes, created_at, updated_at) // Guest CRM tracking
+
 BookingHold (id, session_id, staff_id, service_id, slot_datetime, expires_at, created_at)
 
-Booking (id, staff_id, service_id, slot_datetime, customer_name, customer_phone, final_price, created_at)
+Booking (id, staff_id, service_id, slot_datetime, customer_name, customer_phone, customer_email, customer_id, final_price, created_at) // Enhanced with customer linking
 
 HoldAnalytics (id, session_id, service_id, staff_id, held_at, expired_at, converted) // Conversion tracking
 
@@ -130,7 +136,9 @@ Admin Dashboard (Mobile & Desktop)
 
 Responsive master calendar: Stack view on mobile, side-by-side on desktop
 Quick staff actions: Swipe gestures for common tasks
+Staff management: Add/edit staff members, photo uploads, service assignments
 Pricing management: Simple forms for base/staff price adjustments
+Customer CRM: Guest customer tracking, segmentation, booking history
 Touch-friendly schedule editing: Drag handles, modal forms
 
 Staff Dashboard (Mobile-First)
@@ -157,6 +165,39 @@ Fallback popup: If email fails, show confirmation popup
 Admin notifications: Simple email alerts for new bookings
 Future expansion: SMS integration roadmap mentioned but not implemented
 
+🏪 Guest Customer CRM System
+Phone-Based Customer Tracking (No Registration Required)
+
+Automatic customer recognition: Phone number as unique identifier
+Customer profile creation: Name, phone, optional email, booking history
+Preference tracking: Favorite staff, preferred services, booking patterns
+Revenue tracking: Total spent, booking frequency, customer lifetime value
+Marketing consent: Optional email opt-in for promotions and reminders
+
+CRM Features for Business Intelligence
+
+Customer segmentation: VIP ($1000+), Gold ($500+), Regular (5+ bookings), New
+Retention analytics: Identify inactive customers for re-engagement campaigns
+Booking insights: Most popular services per customer, seasonal patterns
+Staff preferences: Track which customers prefer specific staff members
+Customer notes: Staff observations, allergies, preferences, special requests
+
+Admin CRM Dashboard
+
+Customer search: By name, phone, or email with instant results
+Customer profiles: Complete booking history, spending patterns, preferences
+Segmentation filters: View customers by spend level, booking frequency, activity
+Revenue analytics: Track customer value, identify high-value segments
+Marketing tools: Export email lists with consent tracking
+
+Mobile-First Customer Lookup
+
+Smart phone formatting: Automatic (XXX) XXX-XXXX formatting during input
+Real-time lookup: Customer recognition within 500ms of phone entry
+Auto-fill forms: Pre-populate name and email for returning customers
+Preference suggestions: Auto-suggest favorite staff and services
+Welcome banners: Personalized greetings showing booking history
+
 📊 Basic Analytics (Phase 2 Priority)
 Conversion Tracking Dashboard
 
@@ -172,7 +213,7 @@ Week 1: Foundation & Mobile-First UI
 
 Days 1-2: Database setup, authentication, password hashing
 Days 3-4: Mobile-first React-Big-Calendar integration
-Days 5: Staff pricing system, basic admin interface
+Days 5: Staff pricing system, admin interface, guest customer CRM system
 
 Week 2: Booking Engine & Real-time
 
