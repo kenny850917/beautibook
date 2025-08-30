@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { PrismaService } from "@/lib/services/PrismaService";
+
+// Validation schema for creating new staff
+const CreateStaffSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Valid email is required"),
+  bio: z.string().optional(),
+  services: z.array(z.string()).optional(),
+  temporaryPassword: z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .optional(),
+});
 
 /**
  * GET - Fetch all staff members with comprehensive admin data
@@ -169,6 +183,122 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to fetch staff data",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST - Create new staff member with user account
+ * Admin-only endpoint for adding new staff
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Verify admin authentication
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validation = CreateStaffSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid data",
+          details: validation.error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
+    const {
+      name,
+      email,
+      bio,
+      services = [],
+      temporaryPassword,
+    } = validation.data;
+    const prisma = PrismaService.getInstance();
+
+    // Check if user with this email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User with this email already exists" },
+        { status: 409 }
+      );
+    }
+
+    // Generate password (either provided or random)
+    const password = temporaryPassword || Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user and staff in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user account
+      const user = await tx.user.create({
+        data: {
+          email,
+          password_hash: hashedPassword,
+          role: "STAFF",
+        },
+      });
+
+      // Create staff record
+      const staff = await tx.staff.create({
+        data: {
+          user_id: user.id,
+          name,
+          bio: bio || null,
+          services,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              created_at: true,
+            },
+          },
+        },
+      });
+
+      return { user, staff };
+    });
+
+    return NextResponse.json({
+      success: true,
+      staff: {
+        id: result.staff.id,
+        user_id: result.staff.user_id,
+        name: result.staff.name,
+        bio: result.staff.bio,
+        photo_url: result.staff.photo_url,
+        services: result.staff.services,
+        created_at: result.staff.created_at,
+        user: result.staff.user,
+        serviceDetails: [], // Will be populated when services are assigned
+        availabilityCount: 0,
+      },
+      temporaryPassword: !temporaryPassword ? password : undefined, // Return generated password
+      message: "Staff member created successfully",
+    });
+  } catch (error) {
+    console.error("Error creating staff member:", error);
+
+    return NextResponse.json(
+      {
+        error: "Failed to create staff member",
         message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }

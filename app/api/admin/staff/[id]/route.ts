@@ -367,3 +367,136 @@ export async function GET(
     );
   }
 }
+
+/**
+ * DELETE - Remove/deactivate staff member with business logic validation
+ * Admin-only endpoint for staff removal
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Verify admin authentication
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get staff ID from params
+    const { id: staffId } = await params;
+
+    if (!staffId) {
+      return NextResponse.json(
+        { error: "Staff ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const prisma = PrismaService.getInstance();
+
+    // Check if staff member exists
+    const staff = await prisma.staff.findUnique({
+      where: { id: staffId },
+      include: {
+        user: true,
+        bookings: {
+          where: {
+            slot_datetime: {
+              gte: new Date(), // Only upcoming appointments
+            },
+          },
+        },
+        bookingHolds: {
+          where: {
+            expires_at: {
+              gte: new Date(), // Only active holds
+            },
+          },
+        },
+      },
+    });
+
+    if (!staff) {
+      return NextResponse.json(
+        { error: "Staff member not found" },
+        { status: 404 }
+      );
+    }
+
+    // Business logic validation - prevent removal if staff has upcoming commitments
+    const upcomingBookings = staff.bookings.length;
+    const activeHolds = staff.bookingHolds.length;
+
+    if (upcomingBookings > 0 || activeHolds > 0) {
+      return NextResponse.json(
+        {
+          error: "Cannot remove staff member",
+          reason: "Staff has upcoming appointments or active booking holds",
+          details: {
+            upcomingBookings,
+            activeHolds,
+          },
+          suggestion:
+            "Please wait until all appointments are completed or transfer them to another staff member",
+        },
+        { status: 409 }
+      );
+    }
+
+    // Check if this is the last admin user (prevent lockout)
+    if (staff.user.role === "ADMIN") {
+      const adminCount = await prisma.user.count({
+        where: { role: "ADMIN" },
+      });
+
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          {
+            error: "Cannot remove last admin user",
+            reason: "At least one admin user must remain in the system",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // For MVP, we'll do a soft delete by removing the staff record but keeping user for historical data
+    // In a full system, you'd add a status field instead
+    await prisma.$transaction(async (tx) => {
+      // Remove staff record (this preserves booking history via user_id references)
+      await tx.staff.delete({
+        where: { id: staffId },
+      });
+
+      // Optionally, deactivate the user account (comment out if you want to keep it active)
+      // await tx.user.update({
+      //   where: { id: staff.user_id },
+      //   data: {
+      //     // Add a status field in future: status: "INACTIVE"
+      //   },
+      // });
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Staff member removed successfully",
+      details: {
+        removedStaffId: staffId,
+        preservedUserId: staff.user_id,
+        note: "User account preserved for historical booking records",
+      },
+    });
+  } catch (error) {
+    console.error("Error removing staff member:", error);
+
+    return NextResponse.json(
+      {
+        error: "Failed to remove staff member",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}

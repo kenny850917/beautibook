@@ -23,7 +23,7 @@ export class AvailabilityService {
   }
 
   /**
-   * Get staff availability for a specific day
+   * Get staff availability for a specific day with schedule blocks
    */
   async getStaffAvailability(
     staffId: string,
@@ -37,6 +37,11 @@ export class AvailabilityService {
           staff_id: staffId,
           override_date: date,
         },
+        include: {
+          scheduleBlocks: {
+            orderBy: [{ block_start_time: "asc" }],
+          },
+        },
       });
 
       if (override) {
@@ -44,23 +49,33 @@ export class AvailabilityService {
       }
     }
 
-    // Get regular weekly schedule
+    // Get regular weekly schedule with blocks
     return await prisma.staffAvailability.findFirst({
       where: {
         staff_id: staffId,
         day_of_week: dayOfWeek,
         override_date: null,
       },
+      include: {
+        scheduleBlocks: {
+          orderBy: [{ block_start_time: "asc" }],
+        },
+      },
     });
   }
 
   /**
-   * Get all availability for a staff member
+   * Get all availability for a staff member with schedule blocks
    */
   async getAllStaffAvailability(staffId: string) {
     return await prisma.staffAvailability.findMany({
       where: {
         staff_id: staffId,
+      },
+      include: {
+        scheduleBlocks: {
+          orderBy: [{ block_start_time: "asc" }],
+        },
       },
       orderBy: [
         { override_date: "asc" },
@@ -132,7 +147,7 @@ export class AvailabilityService {
   }
 
   /**
-   * Check if staff is available at a specific time
+   * Check if staff is available at a specific time (factoring in schedule blocks)
    */
   async isStaffAvailable(
     staffId: string,
@@ -155,7 +170,8 @@ export class AvailabilityService {
     const endTime = new Date(dateTime.getTime() + durationMinutes * 60000);
     const requestedEndTime = format(endTime, "HH:mm");
 
-    return (
+    // First check if it's within working hours
+    const withinWorkingHours =
       this.isTimeWithinRange(
         requestedTime,
         availability.start_time,
@@ -165,12 +181,36 @@ export class AvailabilityService {
         requestedEndTime,
         availability.start_time,
         availability.end_time
-      )
-    );
+      );
+
+    if (!withinWorkingHours) {
+      return false;
+    }
+
+    // Check if the time conflicts with any schedule blocks
+    if (availability.scheduleBlocks && availability.scheduleBlocks.length > 0) {
+      const hasBlockConflict = availability.scheduleBlocks.some((block) => {
+        // Check if requested time overlaps with any block
+        return (
+          (requestedTime >= block.block_start_time &&
+            requestedTime < block.block_end_time) ||
+          (requestedEndTime > block.block_start_time &&
+            requestedEndTime <= block.block_end_time) ||
+          (requestedTime <= block.block_start_time &&
+            requestedEndTime >= block.block_end_time)
+        );
+      });
+
+      if (hasBlockConflict) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
-   * Get available time slots for a staff member on a specific date
+   * Get available time slots for a staff member on a specific date (factoring in schedule blocks)
    */
   async getAvailableSlots(
     staffId: string,
@@ -241,6 +281,21 @@ export class AvailabilityService {
       // Check if slot end time is within availability
       if (slotEndTime <= endTime) {
         const slotTime = format(currentSlot, "HH:mm");
+        const slotEndTimeStr = format(slotEndTime, "HH:mm");
+
+        // Check for conflicts with schedule blocks
+        const hasBlockConflict =
+          availability.scheduleBlocks &&
+          availability.scheduleBlocks.some((block) => {
+            return (
+              (slotTime >= block.block_start_time &&
+                slotTime < block.block_end_time) ||
+              (slotEndTimeStr > block.block_start_time &&
+                slotEndTimeStr <= block.block_end_time) ||
+              (slotTime <= block.block_start_time &&
+                slotEndTimeStr >= block.block_end_time)
+            );
+          });
 
         // Check for conflicts with existing bookings
         const hasBookingConflict = existingBookings.some((booking) => {
@@ -269,7 +324,7 @@ export class AvailabilityService {
           );
         });
 
-        if (!hasBookingConflict && !hasHoldConflict) {
+        if (!hasBlockConflict && !hasBookingConflict && !hasHoldConflict) {
           slots.push(slotTime);
         }
       }

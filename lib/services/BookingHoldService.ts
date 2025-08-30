@@ -25,8 +25,8 @@ export class BookingHoldService {
   }
 
   /**
-   * Create a 5-minute hold on a time slot
-   * Core MVP functionality following backend.mdc
+   * Create a 5-minute hold on a time slot and all required consecutive slots
+   * Covers entire service duration (e.g., 60-min haircut = 4x 15-min slots)
    */
   async createHold(
     sessionId: string,
@@ -38,33 +38,69 @@ export class BookingHoldService {
       // Release any existing hold for this session FIRST
       await this.releaseHoldBySession(sessionId);
 
-      // Then check if slot is available (after releasing our own hold)
-      const existingHold = await this.checkSlotAvailability(
-        staffId,
-        slotDateTime
-      );
-      if (!existingHold.available) {
-        throw new Error(existingHold.reason || "Slot is not available");
+      // Fetch service details to get duration
+      const service = await this.prisma.service.findUnique({
+        where: { id: serviceId },
+        select: { duration_minutes: true },
+      });
+
+      if (!service) {
+        throw new Error("Service not found");
+      }
+
+      // Calculate how many 15-minute slots are needed
+      const slotsNeeded = Math.ceil(service.duration_minutes / 15);
+      const requiredSlots: Date[] = [];
+
+      // Generate all required consecutive time slots
+      for (let i = 0; i < slotsNeeded; i++) {
+        const slotTime = new Date(slotDateTime);
+        slotTime.setMinutes(slotTime.getMinutes() + i * 15);
+        requiredSlots.push(slotTime);
+      }
+
+      // Check if ALL required slots are available (before creating any holds)
+      for (const slot of requiredSlots) {
+        const availability = await this.checkSlotAvailability(staffId, slot);
+        if (!availability.available) {
+          throw new Error(
+            `Service requires ${
+              service.duration_minutes
+            } minutes but slot at ${slot.toISOString()} is not available. ${
+              availability.reason || ""
+            }`
+          );
+        }
       }
 
       // Create 5-minute expiration time
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-      // Create hold in database following backend.mdc simple operations
-      const hold = await this.prisma.bookingHold.create({
-        data: {
-          session_id: sessionId,
-          staff_id: staffId,
-          service_id: serviceId,
-          slot_datetime: slotDateTime,
-          expires_at: expiresAt,
-        },
+      // Create holds for ALL required slots in a transaction
+      const holds = await this.prisma.$transaction(async (tx) => {
+        const createdHolds = [];
+        for (const slot of requiredSlots) {
+          const hold = await tx.bookingHold.create({
+            data: {
+              session_id: sessionId,
+              staff_id: staffId,
+              service_id: serviceId,
+              slot_datetime: slot,
+              expires_at: expiresAt,
+            },
+          });
+          createdHolds.push(hold);
+        }
+        return createdHolds;
       });
 
-      // Setup automatic cleanup with setTimeout following backend.mdc
-      this.scheduleHoldCleanup(hold.id, sessionId);
+      // Return the first (primary) hold - represents the main booking time
+      const primaryHold = holds[0];
 
-      // Track analytics for hold creation
+      // Setup automatic cleanup for the session (will clean all holds for this session)
+      this.scheduleHoldCleanup(primaryHold.id, sessionId);
+
+      // Track analytics for hold creation (track primary hold)
       await this.trackHoldAnalytics({
         session_id: sessionId,
         service_id: serviceId,
@@ -73,7 +109,7 @@ export class BookingHoldService {
         converted: false,
       });
 
-      return hold;
+      return primaryHold;
     } catch (error) {
       console.error("Error creating booking hold:", error);
       throw error;

@@ -162,6 +162,8 @@ export async function GET(request: NextRequest) {
         customer_email: booking.customer_email,
         customer_id: booking.customer_id,
         final_price: booking.final_price,
+        status: booking.status, // Added missing status field
+        notes: booking.notes, // Added missing notes field
         created_at: booking.created_at,
         staff: booking.staff,
         service: booking.service,

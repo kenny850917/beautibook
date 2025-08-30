@@ -28,6 +28,8 @@ import {
   isAfter,
   startOfDay,
   parseISO,
+  startOfWeek,
+  endOfWeek,
 } from "date-fns";
 
 interface Service {
@@ -57,6 +59,7 @@ export function DateTimeSelectionContent() {
 
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
+  const [loadingServiceAndStaff, setLoadingServiceAndStaff] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -65,6 +68,8 @@ export function DateTimeSelectionContent() {
   const [processingTimeSlot, setProcessingTimeSlot] = useState<string | null>(
     null
   );
+  const [error, setError] = useState<string | null>(null);
+  const [dateAutoSelected, setDateAutoSelected] = useState(false);
 
   useEffect(() => {
     if (!serviceId || !staffId) {
@@ -72,7 +77,25 @@ export function DateTimeSelectionContent() {
       return;
     }
     fetchServiceAndStaff();
-  }, [serviceId, staffId]);
+
+    // Check for selected date in URL params
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      try {
+        const urlDate = parseISO(dateParam);
+        if (!isNaN(urlDate.getTime()) && isDateAvailable(urlDate)) {
+          setSelectedDate(urlDate);
+          setCurrentDate(urlDate); // Also update calendar view to show this month
+          setDateAutoSelected(true);
+
+          // Clear the auto-selected notice after a few seconds
+          setTimeout(() => setDateAutoSelected(false), 3000);
+        }
+      } catch (error) {
+        console.warn("Invalid date in URL:", dateParam);
+      }
+    }
+  }, [serviceId, staffId, searchParams]);
 
   useEffect(() => {
     if (selectedDate && serviceId && staffId) {
@@ -98,6 +121,8 @@ export function DateTimeSelectionContent() {
       }
     } catch (error) {
       console.error("Error fetching service and staff:", error);
+    } finally {
+      setLoadingServiceAndStaff(false);
     }
   };
 
@@ -126,18 +151,61 @@ export function DateTimeSelectionContent() {
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
     setSelectedTime(null);
+    setDateAutoSelected(false); // Clear auto-selected notice when user manually selects
+
+    // Update URL with selected date for persistence on refresh
+    const dateStr = format(date, "yyyy-MM-dd");
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.set("date", dateStr);
+    router.replace(`/booking/datetime?${newParams.toString()}`, {
+      scroll: false,
+    });
   };
 
-  const handleTimeSelect = (timeSlot: TimeSlot) => {
+  const handleTimeSelect = async (timeSlot: TimeSlot) => {
     if (!timeSlot.available || processingTimeSlot) return;
 
     setSelectedTime(timeSlot.time);
     setProcessingTimeSlot(timeSlot.time);
 
-    // Navigate to confirmation with all booking details
-    router.push(
-      `/booking/confirm?service=${serviceId}&staff=${staffId}&datetime=${timeSlot.datetime}`
-    );
+    try {
+      // Validate slot is still available before proceeding
+      const response = await fetch(
+        `/api/availability/validate?staffId=${staffId}&serviceId=${serviceId}&datetime=${encodeURIComponent(
+          timeSlot.datetime
+        )}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to validate slot availability");
+      }
+
+      const data = await response.json();
+
+      if (data.available) {
+        // Slot is still available, proceed to confirmation
+        router.push(
+          `/booking/confirm?service=${serviceId}&staff=${staffId}&datetime=${timeSlot.datetime}`
+        );
+      } else {
+        // Slot was taken, show error and refresh availability
+        setError(
+          "This time slot is no longer available. Please select another time."
+        );
+        setProcessingTimeSlot(null);
+        setSelectedTime("");
+
+        // Refresh availability for the selected date
+        if (selectedDate) {
+          fetchAvailableSlots();
+        }
+      }
+    } catch (error) {
+      console.error("Error validating slot:", error);
+      setError("Unable to verify slot availability. Please try again.");
+      setProcessingTimeSlot(null);
+      setSelectedTime("");
+    }
   };
 
   const handleBack = () => {
@@ -153,9 +221,16 @@ export function DateTimeSelectionContent() {
   };
 
   const getDaysInMonth = () => {
-    const start = startOfMonth(currentDate);
-    const end = endOfMonth(currentDate);
-    return eachDayOfInterval({ start, end });
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+
+    // Get the start of the calendar grid (includes previous month's trailing days)
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // 0 = Sunday
+
+    // Get the end of the calendar grid (includes next month's leading days)
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   };
 
   const formatTime = (time: string) => {
@@ -186,6 +261,61 @@ export function DateTimeSelectionContent() {
     return isAfter(date, startOfDay(new Date())) || isSameDay(date, new Date());
   };
 
+  // Show loading state while fetching service and staff data
+  if (loadingServiceAndStaff) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        {/* Loading skeleton for booking context */}
+        <div className="bg-white rounded-lg border border-pink-100 p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+            </div>
+            <div className="h-8 bg-gray-200 rounded animate-pulse w-24"></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Calendar skeleton */}
+          <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-32"></div>
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-8 bg-gray-100 rounded animate-pulse"
+                ></div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="aspect-square bg-gray-100 rounded animate-pulse"
+                ></div>
+              ))}
+            </div>
+          </div>
+
+          {/* Time slots skeleton */}
+          <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-40"></div>
+            <div className="grid grid-cols-2 gap-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-12 bg-gray-100 rounded-lg animate-pulse"
+                ></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state only if we've finished loading and still don't have data
   if (!service || !staff) {
     return (
       <div className="max-w-4xl mx-auto text-center py-12">
@@ -228,6 +358,35 @@ export function DateTimeSelectionContent() {
         </div>
       </div>
 
+      {/* Auto-selected date notice */}
+      {dateAutoSelected && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-blue-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                Previously selected date restored:{" "}
+                <strong>
+                  {selectedDate && format(selectedDate, "EEEE, MMMM d")}
+                </strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Calendar */}
         <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
@@ -269,16 +428,21 @@ export function DateTimeSelectionContent() {
               const available = isDateAvailable(date);
               const selected = selectedDate && isSameDay(date, selectedDate);
               const today = isToday(date);
+              const isCurrentMonth = isSameMonth(date, currentDate);
 
               return (
                 <button
                   key={date.toString()}
-                  onClick={() => available && handleDateSelect(date)}
-                  disabled={!available}
+                  onClick={() =>
+                    available && isCurrentMonth && handleDateSelect(date)
+                  }
+                  disabled={!available || !isCurrentMonth}
                   className={`
                     aspect-square flex items-center justify-center text-sm rounded-lg transition-all
                     ${
-                      selected
+                      !isCurrentMonth
+                        ? "text-gray-300 cursor-not-allowed opacity-50"
+                        : selected
                         ? "bg-pink-500 text-white shadow-md"
                         : today
                         ? "bg-pink-50 text-pink-600 border border-pink-200"
@@ -394,6 +558,29 @@ export function DateTimeSelectionContent() {
           )}
         </div>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="text-sm bg-red-100 text-red-800 rounded-md px-3 py-2 hover:bg-red-200 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Help text */}
       <div className="mt-8 text-center">

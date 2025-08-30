@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AvailabilityService } from "@/lib/services/AvailabilityService";
-import { BookingHoldService } from "@/lib/services/BookingHoldService";
 import { PrismaService } from "@/lib/services/PrismaService";
-import {
-  format,
-  parseISO,
-  addMinutes,
-  startOfDay,
-  endOfDay,
-  getDay,
-} from "date-fns";
+import { format, parseISO, getDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { DayOfWeek } from "@prisma/client";
 
@@ -89,13 +81,8 @@ export async function GET(request: NextRequest) {
     const requestDate = parseISO(validDate);
     const pstDate = toZonedTime(requestDate, PST_TIMEZONE);
 
-    // Get day boundaries in PST
-    const dayStart = startOfDay(pstDate);
-    const dayEnd = endOfDay(pstDate);
-
     // Use singletons following backend.mdc
     const availabilityService = AvailabilityService.getInstance();
-    const holdService = BookingHoldService.getInstance();
     const prisma = PrismaService.getInstance();
 
     // Validate staff and service exist
@@ -147,48 +134,36 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get existing bookings for the day
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        staff_id: validStaffId,
-        slot_datetime: {
-          gte: fromZonedTime(dayStart, PST_TIMEZONE),
-          lte: fromZonedTime(dayEnd, PST_TIMEZONE),
-        },
-      },
-      include: {
-        service: true,
-      },
-    });
-
-    // Get active holds for the day
-    const activeHolds = await prisma.bookingHold.findMany({
-      where: {
-        staff_id: validStaffId,
-        slot_datetime: {
-          gte: fromZonedTime(dayStart, PST_TIMEZONE),
-          lte: fromZonedTime(dayEnd, PST_TIMEZONE),
-        },
-        expires_at: {
-          gt: new Date(), // Only active holds
-        },
-      },
-    });
-
-    // Generate 15-minute time slots following requirements
-    const timeSlots = await generateTimeSlots(
-      [staffAvailable], // Wrap single availability object in array
-      service,
-      existingBookings,
-      activeHolds,
-      pstDate
+    // Use the updated AvailabilityService which factors in schedule blocks
+    const availableSlotTimes = await availabilityService.getAvailableSlots(
+      validStaffId,
+      pstDate,
+      service.duration_minutes,
+      15 // 15-minute intervals
     );
+
+    // Convert to frontend format with PST times
+    const timeSlots: TimeSlot[] = availableSlotTimes.map((timeStr) => {
+      // Parse the time string (e.g., "09:00") and create PST date
+      const [hour, minute] = timeStr.split(":").map(Number);
+      const pstSlotTime = new Date(pstDate);
+      pstSlotTime.setHours(hour, minute, 0, 0);
+
+      // Convert to UTC for storage
+      const utcSlotTime = fromZonedTime(pstSlotTime, PST_TIMEZONE);
+
+      return {
+        time: format(pstSlotTime, "h:mm a"), // PST formatted for display
+        datetime: utcSlotTime.toISOString(),
+        available: true, // These are already filtered as available
+      };
+    });
 
     return NextResponse.json({
       success: true,
       slots: timeSlots,
       totalSlots: timeSlots.length,
-      availableSlots: timeSlots.filter((slot) => slot.available).length,
+      availableSlots: timeSlots.length, // All returned slots are available
       date: validDate,
       staffId: validStaffId,
       serviceId: validServiceId,
@@ -208,134 +183,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Generate 15-minute time slots with availability checking
- * Following backend.mdc simple logic patterns
- */
-async function generateTimeSlots(
-  staffAvailability: Array<{ start_time: string; end_time: string }>,
-  service: { id: string; duration_minutes: number },
-  existingBookings: Array<{
-    slot_datetime: Date;
-    service: { duration_minutes: number };
-  }>,
-  activeHolds: Array<{ slot_datetime: Date }>,
-  date: Date
-): Promise<TimeSlot[]> {
-  const slots: TimeSlot[] = [];
-  const slotInterval = 15; // 15-minute intervals
-  const serviceDuration = service.duration_minutes;
-
-  for (const availability of staffAvailability) {
-    // Parse availability times in PST
-    const [startHour, startMinute] = availability.start_time
-      .split(":")
-      .map(Number);
-    const [endHour, endMinute] = availability.end_time.split(":").map(Number);
-
-    const availabilityStart = new Date(date);
-    availabilityStart.setHours(startHour, startMinute, 0, 0);
-
-    const availabilityEnd = new Date(date);
-    availabilityEnd.setHours(endHour, endMinute, 0, 0);
-
-    // Generate slots in 15-minute intervals
-    let currentSlot = new Date(availabilityStart);
-
-    while (currentSlot < availabilityEnd) {
-      // Check if this slot can accommodate the full service
-      const slotEnd = addMinutes(currentSlot, serviceDuration);
-
-      if (slotEnd <= availabilityEnd) {
-        // Convert to UTC for database operations
-        const utcSlotTime = fromZonedTime(currentSlot, PST_TIMEZONE);
-
-        // Check availability
-        const slotAvailability = checkSlotAvailability(
-          utcSlotTime,
-          serviceDuration,
-          existingBookings,
-          activeHolds
-        );
-
-        // Format PST time for display
-        const pstTimeString = format(currentSlot, "h:mm a");
-
-        slots.push({
-          time: pstTimeString,
-          datetime: utcSlotTime.toISOString(),
-          available: slotAvailability.available,
-          reason: slotAvailability.reason,
-        });
-      }
-
-      // Move to next 15-minute interval
-      currentSlot = addMinutes(currentSlot, slotInterval);
-    }
-  }
-
-  return slots;
-}
-
-/**
- * Check if a specific time slot is available
- * Following backend.mdc simple validation logic
- */
-function checkSlotAvailability(
-  slotTime: Date,
-  serviceDuration: number,
-  existingBookings: Array<{
-    slot_datetime: Date;
-    service: { duration_minutes: number };
-  }>,
-  activeHolds: Array<{ slot_datetime: Date }>
-): { available: boolean; reason?: string } {
-  const slotEnd = addMinutes(slotTime, serviceDuration);
-
-  // Check for exact booking conflicts
-  const exactBooking = existingBookings.find(
-    (booking) => booking.slot_datetime.getTime() === slotTime.getTime()
-  );
-
-  if (exactBooking) {
-    return { available: false, reason: "Time slot already booked" };
-  }
-
-  // Check for overlapping bookings
-  const hasOverlap = existingBookings.some((booking) => {
-    const bookingEnd = addMinutes(
-      booking.slot_datetime,
-      booking.service.duration_minutes
-    );
-
-    // Check if new slot overlaps with existing booking
-    return (
-      (slotTime >= booking.slot_datetime && slotTime < bookingEnd) ||
-      (slotEnd > booking.slot_datetime && slotEnd <= bookingEnd) ||
-      (slotTime <= booking.slot_datetime && slotEnd >= bookingEnd)
-    );
-  });
-
-  if (hasOverlap) {
-    return { available: false, reason: "Conflicts with existing booking" };
-  }
-
-  // Check for active holds
-  const holdConflict = activeHolds.find(
-    (hold) => hold.slot_datetime.getTime() === slotTime.getTime()
-  );
-
-  if (holdConflict) {
-    return { available: false, reason: "Time slot currently held" };
-  }
-
-  // Check if slot is in the past
-  const now = new Date();
-  if (slotTime <= now) {
-    return { available: false, reason: "Time slot is in the past" };
-  }
-
-  return { available: true };
 }

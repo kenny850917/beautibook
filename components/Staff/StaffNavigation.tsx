@@ -37,8 +37,8 @@ export default function StaffNavigation() {
       ),
     },
     {
-      name: "Availability",
-      href: "/staff/availability",
+      name: "Manage Schedule",
+      href: "/staff/schedule",
       icon: (
         <svg
           className="h-5 w-5"
@@ -279,7 +279,3 @@ export default function StaffNavigation() {
     </>
   );
 }
-
-
-
-

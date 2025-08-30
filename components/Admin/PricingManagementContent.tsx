@@ -47,6 +47,44 @@ export default function PricingManagementContent() {
   const [newPrice, setNewPrice] = useState<string>("");
   const [apiSummary, setApiSummary] = useState<ApiSummary | null>(null);
 
+  // Service creation modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    duration_minutes: 60,
+    base_price: 50,
+    description: "",
+  });
+
+  // Service editing modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingServiceData, setEditingServiceData] =
+    useState<ServiceWithPricing | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    duration_minutes: 60,
+    base_price: 50,
+    description: "",
+  });
+
+  // Staff pricing management modal state
+  const [isStaffPricingModalOpen, setIsStaffPricingModalOpen] = useState(false);
+  const [staffPricingService, setStaffPricingService] =
+    useState<ServiceWithPricing | null>(null);
+  const [availableStaff, setAvailableStaff] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+  const [isSavingStaffPricing, setIsSavingStaffPricing] = useState(false);
+  const [staffPricingForm, setStaffPricingForm] = useState({
+    staffId: "",
+    customPrice: "",
+  });
+  const [editingStaffPricing, setEditingStaffPricing] =
+    useState<StaffPricing | null>(null);
+
   // Load pricing data from real API
   useEffect(() => {
     const loadPricingData = async () => {
@@ -143,12 +181,413 @@ export default function PricingManagementContent() {
     }
   };
 
-  const handleManageStaffPricing = (serviceId: string) => {
-    // For MVP, show alert with instructions
-    // TODO: Implement staff pricing modal in future phase
-    alert(
-      `Staff pricing management for service ${serviceId} is coming soon! For now, use the staff management section to adjust individual staff pricing.`
-    );
+  const handleCreateService = async () => {
+    setIsCreating(true);
+    try {
+      const response = await fetch("/api/admin/services", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: createForm.name,
+          duration_minutes: createForm.duration_minutes,
+          base_price: createForm.base_price * 100, // Convert to cents
+          description: createForm.description || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create service");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Add the new service to the list
+        setServices((prev) => [...prev, data.service]);
+
+        // Reset form and close modal
+        setCreateForm({
+          name: "",
+          duration_minutes: 60,
+          base_price: 50,
+          description: "",
+        });
+        setIsCreateModalOpen(false);
+
+        alert("Service created successfully!");
+      } else {
+        throw new Error(data.error || "Failed to create service");
+      }
+    } catch (error) {
+      console.error("Error creating service:", error);
+      alert(
+        `Failed to create service: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleEditService = (service: ServiceWithPricing) => {
+    setEditingServiceData(service);
+    setEditForm({
+      name: service.name,
+      duration_minutes: service.duration_minutes,
+      base_price: service.base_price / 100, // Convert from cents to dollars
+      description: "", // Note: description not in current schema
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateService = async () => {
+    if (!editingServiceData) return;
+
+    setIsEditing(true);
+    try {
+      const response = await fetch(
+        `/api/admin/services/${editingServiceData.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: editForm.name,
+            duration_minutes: editForm.duration_minutes,
+            base_price: editForm.base_price * 100, // Convert to cents
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update service");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update the service in the list
+        setServices((prev) =>
+          prev.map((service) =>
+            service.id === editingServiceData.id
+              ? {
+                  ...service,
+                  ...data.service,
+                  base_price: data.service.base_price,
+                }
+              : service
+          )
+        );
+
+        // Close modal and reset
+        setIsEditModalOpen(false);
+        setEditingServiceData(null);
+
+        alert("Service updated successfully!");
+      } else {
+        throw new Error(data.error || "Failed to update service");
+      }
+    } catch (error) {
+      console.error("Error updating service:", error);
+      alert(
+        `Failed to update service: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleManageStaffPricing = async (service: ServiceWithPricing) => {
+    setStaffPricingService(service);
+    setIsStaffPricingModalOpen(true);
+
+    // Load available staff
+    setIsLoadingStaff(true);
+    try {
+      const response = await fetch("/api/admin/staff");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.staff) {
+          setAvailableStaff(
+            data.staff.map((staff: { id: string; name: string }) => ({
+              id: staff.id,
+              name: staff.name,
+            }))
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error loading staff:", error);
+    } finally {
+      setIsLoadingStaff(false);
+    }
+  };
+
+  const handleAddStaffPricing = async () => {
+    if (
+      !staffPricingService ||
+      !staffPricingForm.staffId ||
+      !staffPricingForm.customPrice
+    ) {
+      return;
+    }
+
+    setIsSavingStaffPricing(true);
+    try {
+      const response = await fetch(
+        `/api/admin/services/${staffPricingService.id}/staff-pricing`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            staffId: staffPricingForm.staffId,
+            customPrice: Math.round(
+              parseFloat(staffPricingForm.customPrice) * 100
+            ), // Convert to cents
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add staff pricing");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state
+        setServices((prev) =>
+          prev.map((service) =>
+            service.id === staffPricingService.id
+              ? {
+                  ...service,
+                  staffPricing: [...service.staffPricing, data.staffPricing],
+                  hasOverrides: true,
+                  averagePrice:
+                    data.updatedService?.averagePrice || service.averagePrice,
+                }
+              : service
+          )
+        );
+
+        // Update the modal service data
+        setStaffPricingService((prev) =>
+          prev
+            ? {
+                ...prev,
+                staffPricing: [...prev.staffPricing, data.staffPricing],
+                hasOverrides: true,
+              }
+            : null
+        );
+
+        // Reset form
+        setStaffPricingForm({
+          staffId: "",
+          customPrice: "",
+        });
+
+        alert("Staff pricing added successfully!");
+      } else {
+        throw new Error(data.error || "Failed to add staff pricing");
+      }
+    } catch (error) {
+      console.error("Error adding staff pricing:", error);
+      alert(
+        `Failed to add staff pricing: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsSavingStaffPricing(false);
+    }
+  };
+
+  const handleEditStaffPricing = (staffPricing: StaffPricing) => {
+    setEditingStaffPricing(staffPricing);
+    setStaffPricingForm({
+      staffId: staffPricing.staff_id,
+      customPrice: (staffPricing.custom_price / 100).toString(),
+    });
+  };
+
+  const handleUpdateStaffPricing = async () => {
+    if (!editingStaffPricing || !staffPricingForm.customPrice) {
+      return;
+    }
+
+    setIsSavingStaffPricing(true);
+    try {
+      const response = await fetch(
+        `/api/admin/services/${editingStaffPricing.service_id}/staff-pricing/${editingStaffPricing.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            customPrice: Math.round(
+              parseFloat(staffPricingForm.customPrice) * 100
+            ), // Convert to cents
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update staff pricing");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state
+        setServices((prev) =>
+          prev.map((service) =>
+            service.id === editingStaffPricing.service_id
+              ? {
+                  ...service,
+                  staffPricing: service.staffPricing.map((pricing) =>
+                    pricing.id === editingStaffPricing.id
+                      ? data.staffPricing
+                      : pricing
+                  ),
+                  averagePrice:
+                    data.updatedService?.averagePrice || service.averagePrice,
+                }
+              : service
+          )
+        );
+
+        // Update the modal service data
+        setStaffPricingService((prev) =>
+          prev
+            ? {
+                ...prev,
+                staffPricing: prev.staffPricing.map((pricing) =>
+                  pricing.id === editingStaffPricing.id
+                    ? data.staffPricing
+                    : pricing
+                ),
+              }
+            : null
+        );
+
+        // Reset form
+        setEditingStaffPricing(null);
+        setStaffPricingForm({
+          staffId: "",
+          customPrice: "",
+        });
+
+        alert("Staff pricing updated successfully!");
+      } else {
+        throw new Error(data.error || "Failed to update staff pricing");
+      }
+    } catch (error) {
+      console.error("Error updating staff pricing:", error);
+      alert(
+        `Failed to update staff pricing: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsSavingStaffPricing(false);
+    }
+  };
+
+  const handleDeleteStaffPricing = async (staffPricingId: string) => {
+    if (!staffPricingService) return;
+
+    if (
+      !confirm("Are you sure you want to remove this staff pricing override?")
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/admin/services/${staffPricingService.id}/staff-pricing/${staffPricingId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete staff pricing");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state
+        setServices((prev) =>
+          prev.map((service) =>
+            service.id === staffPricingService.id
+              ? {
+                  ...service,
+                  staffPricing: service.staffPricing.filter(
+                    (pricing) => pricing.id !== staffPricingId
+                  ),
+                  hasOverrides:
+                    service.staffPricing.filter(
+                      (pricing) => pricing.id !== staffPricingId
+                    ).length > 0,
+                  averagePrice:
+                    data.updatedService?.averagePrice || service.averagePrice,
+                }
+              : service
+          )
+        );
+
+        // Update the modal service data
+        setStaffPricingService((prev) =>
+          prev
+            ? {
+                ...prev,
+                staffPricing: prev.staffPricing.filter(
+                  (pricing) => pricing.id !== staffPricingId
+                ),
+                hasOverrides:
+                  prev.staffPricing.filter(
+                    (pricing) => pricing.id !== staffPricingId
+                  ).length > 0,
+              }
+            : null
+        );
+
+        alert("Staff pricing removed successfully!");
+      } else {
+        throw new Error(data.error || "Failed to delete staff pricing");
+      }
+    } catch (error) {
+      console.error("Error deleting staff pricing:", error);
+      alert(
+        `Failed to remove staff pricing: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  };
+
+  const cancelStaffPricingEdit = () => {
+    setEditingStaffPricing(null);
+    setStaffPricingForm({
+      staffId: "",
+      customPrice: "",
+    });
   };
 
   if (isLoading) {
@@ -180,6 +619,31 @@ export default function PricingManagementContent() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Action Buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]"
+          >
+            <svg
+              className="h-5 w-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            Add Service
+          </button>
+        </div>
+      </div>
+
       {/* Pricing Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-lg shadow">
@@ -421,13 +885,47 @@ export default function PricingManagementContent() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleManageStaffPricing(service.id)}
-                      className="text-purple-600 hover:text-purple-900 min-h-[44px] px-2"
-                    >
-                      Manage Staff Pricing
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => handleManageStaffPricing(service)}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                        title="Manage Staff Pricing"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleEditService(service)}
+                        className="text-gray-600 hover:text-gray-800 p-1"
+                        title="Edit Service"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -477,17 +975,569 @@ export default function PricingManagementContent() {
               </div>
             )}
 
-            <div className="mt-3 pt-3 border-t">
+            <div className="mt-3 pt-3 border-t space-y-2">
               <button
-                onClick={() => handleManageStaffPricing(service.id)}
+                onClick={() => handleManageStaffPricing(service)}
                 className="w-full bg-purple-600 text-white px-4 py-2 rounded-md text-sm hover:bg-purple-700 min-h-[44px]"
               >
-                Manage Pricing
+                Manage Staff Pricing
+              </button>
+              <button
+                onClick={() => handleEditService(service)}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 min-h-[44px]"
+              >
+                Edit Service
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Service Creation Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Add New Service
+                </h3>
+                <button
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="e.g., Men's Haircut"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Duration (minutes) *
+                </label>
+                <input
+                  type="number"
+                  value={createForm.duration_minutes}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      duration_minutes: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  min="15"
+                  max="480"
+                  step="15"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Base Price ($) *
+                </label>
+                <input
+                  type="number"
+                  value={createForm.base_price}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      base_price: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  min="1"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={createForm.description}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Brief description of the service..."
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={isCreating}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateService}
+                disabled={
+                  isCreating ||
+                  !createForm.name ||
+                  createForm.duration_minutes < 15 ||
+                  createForm.base_price <= 0
+                }
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreating ? "Creating..." : "Create Service"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Service Edit Modal */}
+      {isEditModalOpen && editingServiceData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Edit Service: {editingServiceData.name}
+                </h3>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="e.g., Men's Haircut"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Duration (minutes) *
+                </label>
+                <input
+                  type="number"
+                  value={editForm.duration_minutes}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      duration_minutes: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  min="15"
+                  max="480"
+                  step="15"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Base Price ($) *
+                </label>
+                <input
+                  type="number"
+                  value={editForm.base_price}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      base_price: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  min="1"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Show staff pricing information */}
+              {editingServiceData.hasOverrides && (
+                <div className="border rounded-lg p-3 bg-gray-50">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Current Staff Pricing Overrides:
+                  </h4>
+                  {editingServiceData.staffPricing.map((pricing) => (
+                    <div
+                      key={pricing.id}
+                      className="flex justify-between text-sm py-1"
+                    >
+                      <span className="text-gray-600">
+                        {pricing.staff.name}
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(pricing.custom_price)}
+                      </span>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Note: Changing the base price won&apos;t affect existing
+                    staff overrides.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isEditing}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateService}
+                disabled={
+                  isEditing ||
+                  !editForm.name ||
+                  editForm.duration_minutes < 15 ||
+                  editForm.base_price <= 0
+                }
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isEditing ? "Updating..." : "Update Service"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Pricing Management Modal */}
+      {isStaffPricingModalOpen && staffPricingService && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Manage Staff Pricing: {staffPricingService.name}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Base Price: {formatCurrency(staffPricingService.base_price)}{" "}
+                    | Duration:{" "}
+                    {formatDuration(staffPricingService.duration_minutes)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsStaffPricingModalOpen(false);
+                    setStaffPricingService(null);
+                    setEditingStaffPricing(null);
+                    setStaffPricingForm({ staffId: "", customPrice: "" });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4">
+              {/* Add/Edit Staff Pricing Form */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium text-gray-900 mb-3">
+                  {editingStaffPricing
+                    ? "Edit Staff Pricing"
+                    : "Add Staff Pricing Override"}
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Staff Member
+                    </label>
+                    {editingStaffPricing ? (
+                      <input
+                        type="text"
+                        value={
+                          availableStaff.find(
+                            (s) => s.id === staffPricingForm.staffId
+                          )?.name || ""
+                        }
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                      />
+                    ) : (
+                      <select
+                        value={staffPricingForm.staffId}
+                        onChange={(e) =>
+                          setStaffPricingForm((prev) => ({
+                            ...prev,
+                            staffId: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        disabled={isLoadingStaff}
+                      >
+                        <option value="">Select Staff</option>
+                        {availableStaff
+                          .filter(
+                            (staff) =>
+                              !staffPricingService.staffPricing.some(
+                                (pricing) => pricing.staff_id === staff.id
+                              )
+                          )
+                          .map((staff) => (
+                            <option key={staff.id} value={staff.id}>
+                              {staff.name}
+                            </option>
+                          ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Custom Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="1"
+                      value={staffPricingForm.customPrice}
+                      onChange={(e) =>
+                        setStaffPricingForm((prev) => ({
+                          ...prev,
+                          customPrice: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder={(
+                        staffPricingService.base_price / 100
+                      ).toFixed(2)}
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    {editingStaffPricing ? (
+                      <div className="flex space-x-2 w-full">
+                        <button
+                          onClick={handleUpdateStaffPricing}
+                          disabled={
+                            isSavingStaffPricing ||
+                            !staffPricingForm.customPrice
+                          }
+                          className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSavingStaffPricing ? "Updating..." : "Update"}
+                        </button>
+                        <button
+                          onClick={cancelStaffPricingEdit}
+                          disabled={isSavingStaffPricing}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 min-h-[44px] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleAddStaffPricing}
+                        disabled={
+                          isSavingStaffPricing ||
+                          !staffPricingForm.staffId ||
+                          !staffPricingForm.customPrice ||
+                          isLoadingStaff
+                        }
+                        className="w-full bg-purple-600 text-white px-3 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSavingStaffPricing ? "Adding..." : "Add Override"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Staff Pricing Overrides */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 mb-3">
+                  Current Staff Pricing Overrides
+                </h4>
+
+                {staffPricingService.staffPricing.length > 0 ? (
+                  <div className="space-y-2">
+                    {staffPricingService.staffPricing.map((pricing) => (
+                      <div
+                        key={pricing.id}
+                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      >
+                        <div>
+                          <span className="font-medium text-gray-900">
+                            {pricing.staff.name}
+                          </span>
+                          <span className="text-gray-500 ml-2">
+                            {formatCurrency(pricing.custom_price)}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-2">
+                            (Base:{" "}
+                            {formatCurrency(staffPricingService.base_price)})
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEditStaffPricing(pricing)}
+                            disabled={
+                              isSavingStaffPricing ||
+                              editingStaffPricing !== null
+                            }
+                            className="text-blue-600 hover:text-blue-800 p-1 disabled:opacity-50"
+                            title="Edit Price"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStaffPricing(pricing.id)}
+                            disabled={isSavingStaffPricing}
+                            className="text-red-600 hover:text-red-800 p-1 disabled:opacity-50"
+                            title="Remove Override"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg
+                      className="h-12 w-12 mx-auto mb-4 text-gray-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                      />
+                    </svg>
+                    <p>No staff pricing overrides yet</p>
+                    <p className="text-sm">
+                      Add an override above to get started
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => {
+                  setIsStaffPricingModalOpen(false);
+                  setStaffPricingService(null);
+                  setEditingStaffPricing(null);
+                  setStaffPricingForm({ staffId: "", customPrice: "" });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 min-h-[44px]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

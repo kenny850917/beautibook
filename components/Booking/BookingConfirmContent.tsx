@@ -98,11 +98,16 @@ export function BookingConfirmContent() {
         staffResponse.json(),
       ]);
 
+      // Get actual staff pricing (override or base price)
+      const actualPrice =
+        (serviceId && staffData.staff.customPricing?.[serviceId]) ||
+        serviceData.service.base_price;
+
       const bookingDetails: BookingDetails = {
         service: serviceData.service,
         staff: staffData.staff,
         datetime: datetime!,
-        price: serviceData.service.base_price, // TODO: Include staff custom pricing
+        price: actualPrice, // Use actual staff pricing
       };
 
       setBookingDetails(bookingDetails);

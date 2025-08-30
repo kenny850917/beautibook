@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { UserRole } from "@prisma/client";
+import StaffScheduleManagement from "./StaffScheduleManagement";
 
 interface StaffMember {
   id: string;
@@ -31,99 +32,104 @@ interface Service {
   base_price: number;
 }
 
+interface APIStaffMember {
+  id: string;
+  user_id: string;
+  name: string;
+  bio: string | null;
+  photo_url: string | null;
+  services: string[];
+  user: {
+    email: string;
+    role: UserRole;
+  };
+  serviceDetails: {
+    id: string;
+    name: string;
+    base_price: number;
+    custom_price?: number;
+  }[];
+  availabilityCount: number;
+}
+
 export default function StaffManagementContent() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleStaff, setScheduleStaff] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    bio: "",
+    services: [] as string[],
+    servicePricing: {} as Record<string, number | null>,
+  });
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    email: "",
+    bio: "",
+    temporaryPassword: "",
+  });
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(
+    null
+  );
 
-  // Load staff and services data
+  // Load staff and services data from real APIs
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
 
-        // For MVP, use mock data until API endpoints are created
-        // TODO: Replace with actual API calls in Phase 4
-        const mockServices: Service[] = [
-          { id: "1", name: "Haircut", duration_minutes: 60, base_price: 6500 },
-          {
-            id: "2",
-            name: "Hair Color",
-            duration_minutes: 120,
-            base_price: 12000,
-          },
-          {
-            id: "3",
-            name: "Highlights",
-            duration_minutes: 180,
-            base_price: 15000,
-          },
-        ];
+        // Fetch services and staff data in parallel
+        const [servicesResponse, staffResponse] = await Promise.all([
+          fetch("/api/admin/services"),
+          fetch("/api/admin/staff"),
+        ]);
 
-        const mockStaff: StaffMember[] = [
-          {
-            id: "staff1",
-            user_id: "user1",
-            name: "Sarah Johnson",
-            bio: "Senior stylist with 8+ years experience specializing in cuts and color",
-            photo_url: null,
-            services: ["1", "2", "3"],
-            user: { email: "sarah@salon.com", role: UserRole.STAFF },
-            serviceDetails: [
-              {
-                id: "1",
-                name: "Haircut",
-                base_price: 6500,
-                custom_price: 7500,
-              },
-              { id: "2", name: "Hair Color", base_price: 12000 },
-              {
-                id: "3",
-                name: "Highlights",
-                base_price: 15000,
-                custom_price: 16500,
-              },
-            ],
-            availabilityCount: 5,
-          },
-          {
-            id: "staff2",
-            user_id: "user2",
-            name: "Mike Chen",
-            bio: "Expert in precision cuts and modern styling techniques",
-            photo_url: null,
-            services: ["1"],
-            user: { email: "mike@salon.com", role: UserRole.STAFF },
-            serviceDetails: [{ id: "1", name: "Haircut", base_price: 6500 }],
-            availabilityCount: 5,
-          },
-          {
-            id: "staff3",
-            user_id: "user3",
-            name: "Lisa Rodriguez",
-            bio: "Color specialist with expertise in blonde and fashion colors",
-            photo_url: null,
-            services: ["2", "3"],
-            user: { email: "lisa@salon.com", role: UserRole.STAFF },
-            serviceDetails: [
-              {
-                id: "2",
-                name: "Hair Color",
-                base_price: 12000,
-                custom_price: 13000,
-              },
-              { id: "3", name: "Highlights", base_price: 15000 },
-            ],
-            availabilityCount: 4,
-          },
-        ];
+        if (!servicesResponse.ok || !staffResponse.ok) {
+          throw new Error("Failed to fetch data");
+        }
 
-        setServices(mockServices);
-        setStaff(mockStaff);
+        const [servicesData, staffData] = await Promise.all([
+          servicesResponse.json(),
+          staffResponse.json(),
+        ]);
+
+        if (servicesData.success && servicesData.services) {
+          setServices(servicesData.services);
+        }
+
+        if (staffData.success && staffData.staff) {
+          // Transform API response to match component interface
+          const transformedStaff: StaffMember[] = staffData.staff.map(
+            (member: APIStaffMember) => ({
+              id: member.id,
+              user_id: member.user_id,
+              name: member.name,
+              bio: member.bio,
+              photo_url: member.photo_url,
+              services: member.services,
+              user: {
+                email: member.user.email,
+                role: member.user.role,
+              },
+              serviceDetails: member.serviceDetails,
+              availabilityCount: member.availabilityCount || 0,
+            })
+          );
+
+          setStaff(transformedStaff);
+        }
       } catch (error) {
         console.error("Error loading staff data:", error);
+        // You could set an error state here to show to the user
       } finally {
         setIsLoading(false);
       }
@@ -141,7 +147,225 @@ export default function StaffManagementContent() {
 
   const handleEditStaff = (staff: StaffMember) => {
     setSelectedStaff(staff);
+
+    // Populate form with current staff data
+    const servicePricing: Record<string, number | null> = {};
+    staff.serviceDetails?.forEach((service) => {
+      servicePricing[service.id] = service.custom_price || null;
+    });
+
+    setEditForm({
+      name: staff.name,
+      bio: staff.bio || "",
+      services: staff.services,
+      servicePricing,
+    });
+
     setIsModalOpen(true);
+  };
+
+  const handleSaveStaff = async () => {
+    if (!selectedStaff) return;
+
+    setIsSaving(true);
+    try {
+      // Transform pricing data for API
+      const servicePricing = Object.entries(editForm.servicePricing)
+        .filter(([serviceId]) => editForm.services.includes(serviceId))
+        .map(([serviceId, customPrice]) => ({
+          serviceId,
+          customPrice,
+        }));
+
+      const response = await fetch(`/api/admin/staff/${selectedStaff.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editForm.name,
+          bio: editForm.bio || null,
+          services: editForm.services,
+          servicePricing,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update staff member");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state with new data
+        setStaff((prevStaff) =>
+          prevStaff.map((member) =>
+            member.id === selectedStaff.id
+              ? {
+                  ...member,
+                  name: editForm.name,
+                  bio: editForm.bio || null,
+                  services: editForm.services,
+                  serviceDetails: services
+                    .filter((service) => editForm.services.includes(service.id))
+                    .map((service) => ({
+                      id: service.id,
+                      name: service.name,
+                      base_price: service.base_price,
+                      custom_price:
+                        editForm.servicePricing[service.id] || undefined,
+                    })),
+                }
+              : member
+          )
+        );
+
+        setIsModalOpen(false);
+        setSelectedStaff(null);
+      } else {
+        throw new Error(data.error || "Failed to update staff member");
+      }
+    } catch (error) {
+      console.error("Error updating staff:", error);
+      alert("Failed to update staff member. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleServiceToggle = (serviceId: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      services: prev.services.includes(serviceId)
+        ? prev.services.filter((id) => id !== serviceId)
+        : [...prev.services, serviceId],
+    }));
+  };
+
+  const handlePricingChange = (serviceId: string, value: string) => {
+    const numValue = value ? parseInt(value) * 100 : null; // Convert to cents
+    setEditForm((prev) => ({
+      ...prev,
+      servicePricing: {
+        ...prev.servicePricing,
+        [serviceId]: numValue,
+      },
+    }));
+  };
+
+  const handleCreateStaff = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: createForm.name,
+          email: createForm.email,
+          bio: createForm.bio || undefined,
+          temporaryPassword: createForm.temporaryPassword || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create staff member");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Add new staff to local state
+        setStaff((prev) => [...prev, data.staff]);
+
+        // Show generated password if one was created
+        if (data.temporaryPassword) {
+          setGeneratedPassword(data.temporaryPassword);
+        }
+
+        // Reset form
+        setCreateForm({
+          name: "",
+          email: "",
+          bio: "",
+          temporaryPassword: "",
+        });
+
+        // Keep modal open to show password if generated
+        if (!data.temporaryPassword) {
+          setIsCreateModalOpen(false);
+        }
+      } else {
+        throw new Error(data.error || "Failed to create staff member");
+      }
+    } catch (error) {
+      console.error("Error creating staff:", error);
+      alert(
+        `Failed to create staff member: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteStaff = async (staffMember: StaffMember) => {
+    const confirmMessage = `Are you sure you want to remove ${staffMember.name}?\n\nThis action cannot be undone. The staff member will be removed from the system, but their booking history will be preserved.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/staff/${staffMember.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle business logic errors with helpful messages
+        if (response.status === 409) {
+          alert(
+            `Cannot remove ${staffMember.name}:\n\n${data.reason}\n\n${
+              data.suggestion || ""
+            }`
+          );
+          return;
+        }
+        throw new Error(data.error || "Failed to remove staff member");
+      }
+
+      if (data.success) {
+        // Remove staff from local state
+        setStaff((prev) =>
+          prev.filter((member) => member.id !== staffMember.id)
+        );
+        alert(
+          `${staffMember.name} has been successfully removed from the system.`
+        );
+      } else {
+        throw new Error(data.error || "Failed to remove staff member");
+      }
+    } catch (error) {
+      console.error("Error removing staff:", error);
+      alert(
+        `Failed to remove staff member: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  };
+
+  const handleManageSchedule = (staffMember: StaffMember) => {
+    setScheduleStaff({
+      id: staffMember.id,
+      name: staffMember.name,
+    });
+    setIsScheduleModalOpen(true);
   };
 
   const getServiceNames = (serviceIds: string[]): string => {
@@ -275,15 +499,24 @@ export default function StaffManagementContent() {
               </div>
 
               {/* Actions */}
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => handleEditStaff(member)}
-                  className="flex-1 bg-purple-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]"
+                  className="bg-purple-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]"
                 >
-                  Edit Details
+                  Edit
                 </button>
-                <button className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]">
+                <button
+                  onClick={() => handleManageSchedule(member)}
+                  className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-h-[44px]"
+                >
                   Schedule
+                </button>
+                <button
+                  onClick={() => handleDeleteStaff(member)}
+                  className="border border-red-300 text-red-600 px-3 py-2 rounded-md text-sm font-medium hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 min-h-[44px]"
+                >
+                  Remove
                 </button>
               </div>
             </div>
@@ -314,7 +547,10 @@ export default function StaffManagementContent() {
             <p className="text-sm text-gray-500 mb-4">
               Create a new staff account and assign services
             </p>
-            <button className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]">
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]"
+            >
               Add New Staff
             </button>
           </div>
@@ -352,29 +588,328 @@ export default function StaffManagementContent() {
         </div>
       </div>
 
-      {/* TODO: Add Edit Staff Modal */}
+      {/* Staff Edit Modal */}
       {isModalOpen && selectedStaff && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-medium mb-6">
               Edit {selectedStaff.name}
             </h3>
-            <p className="text-gray-600 mb-4">
-              Staff editing functionality will be implemented in the next phase.
-            </p>
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 min-h-[44px]"
-            >
-              Close
-            </button>
+
+            {/* Staff Details Form */}
+            <div className="space-y-6">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Staff member name"
+                />
+              </div>
+
+              {/* Bio */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Bio
+                </label>
+                <textarea
+                  value={editForm.bio}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, bio: e.target.value }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Brief description of expertise and specialties"
+                />
+              </div>
+
+              {/* Services & Pricing */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Services & Custom Pricing
+                </label>
+                <div className="space-y-3">
+                  {services.map((service) => {
+                    const isSelected = editForm.services.includes(service.id);
+                    const customPrice = editForm.servicePricing[service.id];
+
+                    return (
+                      <div
+                        key={service.id}
+                        className={`border rounded-lg p-4 transition-all ${
+                          isSelected
+                            ? "border-purple-200 bg-purple-50"
+                            : "border-gray-200 bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleServiceToggle(service.id)}
+                            className="mt-1 h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                          />
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium text-gray-900">
+                                {service.name}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                Base: {formatCurrency(service.base_price)}
+                              </span>
+                            </div>
+
+                            {isSelected && (
+                              <div>
+                                <label className="block text-sm text-gray-600 mb-1">
+                                  Custom Price (optional)
+                                </label>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-gray-500">
+                                    $
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={
+                                      customPrice
+                                        ? (customPrice / 100).toFixed(2)
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      handlePricingChange(
+                                        service.id,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                    placeholder={(
+                                      service.base_price / 100
+                                    ).toFixed(2)}
+                                  />
+                                  {customPrice && (
+                                    <button
+                                      onClick={() =>
+                                        handlePricingChange(service.id, "")
+                                      }
+                                      className="text-xs text-gray-400 hover:text-gray-600"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex space-x-3 mt-8">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                disabled={isSaving}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveStaff}
+                disabled={
+                  isSaving ||
+                  !editForm.name.trim() ||
+                  editForm.services.length === 0
+                }
+                className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Staff Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium mb-6">Add New Staff Member</h3>
+
+            {generatedPassword ? (
+              // Show generated password
+              <div className="text-center">
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-medium text-green-800 mb-2">
+                    Staff Member Created Successfully!
+                  </h4>
+                  <p className="text-sm text-green-700 mb-3">
+                    {createForm.name} has been added to the system.
+                  </p>
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-sm text-gray-600 mb-1">
+                      Temporary Password:
+                    </p>
+                    <code className="text-lg font-mono bg-gray-100 px-2 py-1 rounded">
+                      {generatedPassword}
+                    </code>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Please share this password securely with the new staff
+                    member. They should change it on first login.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setGeneratedPassword(null);
+                    setIsCreateModalOpen(false);
+                  }}
+                  className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 min-h-[44px]"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              // Create staff form
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.name}
+                    onChange={(e) =>
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Staff member's full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) =>
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="staff@salon.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Bio (Optional)
+                  </label>
+                  <textarea
+                    value={createForm.bio}
+                    onChange={(e) =>
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        bio: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Brief description of expertise and specialties"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Temporary Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    value={createForm.temporaryPassword}
+                    onChange={(e) =>
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        temporaryPassword: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Leave blank to auto-generate"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    If left blank, a temporary password will be generated
+                    automatically.
+                  </p>
+                </div>
+
+                <div className="flex space-x-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setIsCreateModalOpen(false);
+                      setCreateForm({
+                        name: "",
+                        email: "",
+                        bio: "",
+                        temporaryPassword: "",
+                      });
+                      setGeneratedPassword(null);
+                    }}
+                    disabled={isSaving}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateStaff}
+                    disabled={
+                      isSaving ||
+                      !createForm.name.trim() ||
+                      !createForm.email.trim()
+                    }
+                    className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? "Creating..." : "Create Staff Member"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Management Modal */}
+      {isScheduleModalOpen && scheduleStaff && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="w-full max-w-5xl">
+            <StaffScheduleManagement
+              staffId={scheduleStaff.id}
+              staffName={scheduleStaff.name}
+              onClose={() => {
+                setIsScheduleModalOpen(false);
+                setScheduleStaff(null);
+              }}
+            />
           </div>
         </div>
       )}
     </>
   );
 }
-
-
-
-

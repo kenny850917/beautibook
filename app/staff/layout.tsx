@@ -47,7 +47,7 @@ export default async function StaffLayout({ children }: StaffLayoutProps) {
 
               {/* Quick Status Toggle */}
               <div className="flex items-center space-x-3">
-                <div className="flex items-center">
+                {/* <div className="flex items-center">
                   <span className="text-sm text-gray-600 mr-2">Available</span>
                   <button
                     type="button"
@@ -57,7 +57,7 @@ export default async function StaffLayout({ children }: StaffLayoutProps) {
                   >
                     <span className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-5"></span>
                   </button>
-                </div>
+                </div> */}
 
                 {/* Profile Avatar */}
                 <div className="h-8 w-8 bg-purple-600 rounded-full flex items-center justify-center">
@@ -77,7 +77,5 @@ export default async function StaffLayout({ children }: StaffLayoutProps) {
     </div>
   );
 }
-
-
 
 

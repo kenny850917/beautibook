@@ -293,59 +293,90 @@ Beauty salon booking system with 5-minute hold system, mobile-first design, and 
 
 ---
 
-## 🔄 Phase 6: Real-time Updates & SSE (Day 10)
+## 🔄 Phase 6: Core Booking Fixes & Admin Integration (Day 10)
+
+### Critical Booking System Fixes
+
+- [x] **Fix slot validation with API checks** (`components/Booking/DateTimeSelectionContent.tsx`)
+
+  - [x] Replace immediate navigation with API availability check
+  - [x] Add loading state during slot validation
+  - [x] Show error if slot becomes unavailable
+  - [x] Refresh availability after failed validation
+  - [x] Prevent double-booking through real-time validation
+
+- [x] **Fix booking hold duration coverage** (`lib/services/BookingHoldService.ts`)
+
+  - [x] Calculate required slots based on service duration
+  - [x] Hold all consecutive 15-minute slots for service duration
+  - [x] Example: 60-minute haircut = hold 4 consecutive slots
+  - [x] Update hold creation logic to block entire duration
+  - [x] Ensure holds release all slots simultaneously
+
+### Admin Integration (Phase 3/5 Continuation)
+
+- [x] **Staff management API integration** (`components/Admin/StaffManagementContent.tsx`)
+
+  - [x] Convert from mock data to real API endpoints
+  - [x] Implement staff editing functionality with forms
+  - [x] Add/remove staff service assignments
+  - [x] Update staff pricing overrides through interface
+  - [ ] Handle staff photo uploads and profile updates
+
+- [x] **Staff creation and removal system** (`components/Admin/StaffManagementContent.tsx`)
+
+  - [x] Add "Create New Staff" functionality with user account creation
+  - [x] Implement staff creation with auto-generated or custom temporary passwords
+  - [x] Add staff removal with business logic validation
+  - [x] Prevent removal of staff with upcoming appointments or active holds
+  - [x] Preserve user records for historical booking data integrity
+  - [x] Create admin protection (prevent removal of last admin user)
+
+- [x] **Staff availability and schedule management** (`app/api/admin/staff/[id]/availability/route.ts`)
+
+  - [x] Create staff availability API endpoints (GET, PUT for admin and staff)
+  - [x] Implement weekly schedule management (days/times available)
+  - [x] Add override dates for holidays/time-off requests
+  - [x] Build staff schedule editing interface for admins (`StaffScheduleManagement.tsx`)
+  - [x] Create staff portal schedule management for self-service (`StaffScheduleEditor.tsx`)
+  - [x] Add schedule validation (time logic, conflict detection)
+  - [x] Implement weekly schedule templates with 15-minute intervals
+  - [x] Add schedule conflict detection with existing bookings and business logic
+
+- [x] **Service management and pricing** (`app/admin/pricing/page.tsx`)
+
+  - [x] Add "Add New Service" button to admin pricing page with modal
+  - [x] Create service creation modal with name, duration, base price, description
+  - [x] Implement service editing functionality for existing services
+  - [x] Add service validation (prevent duplicate names, required fields)
+  - [x] Build staff pricing override management (redirects to staff management)
+  - [x] API endpoints for service creation (`POST /api/admin/services`)
+  - [x] API endpoints for service editing (`PUT /api/admin/services/[id]`)
+  - [x] Real-time service list updates after creation/editing
+
 
 ### Guest Appointment Lookup
 
-- [ ] **Guest appointment lookup page** (`app/appointments/lookup/page.tsx`)
+- [x] **Guest appointment lookup page** (`app/appointments/lookup/page.tsx`)
 
-  - [ ] Simple phone number input form
-  - [ ] Mobile-optimized design with large touch targets
-  - [ ] Loading states and error handling
-  - [ ] Security validation (phone + name verification)
+  - [x] Simple phone number input form
+  - [x] Mobile-optimized design with large touch targets
+  - [x] Loading states and error handling
+  - [x] Security validation (phone + name verification)
 
-- [ ] **Guest lookup API** (`app/api/appointments/lookup/route.ts`)
+- [x] **Guest lookup API** (`app/api/appointments/lookup/route.ts`)
 
-  - [ ] POST endpoint for guest appointment search
-  - [ ] Phone number validation and formatting
-  - [ ] Return upcoming and recent appointments
-  - [ ] Include booking details (date, time, service, staff)
+  - [x] POST endpoint for guest appointment search
+  - [x] Phone number validation and formatting
+  - [x] Return upcoming and recent appointments
+  - [x] Include booking details (date, time, service, staff)
 
 - [ ] **Guest appointment display** (`components/Guest/AppointmentLookup.tsx`)
+  - [ ] Recreate component (accidentally deleted during SSE cleanup)
   - [ ] Display upcoming appointments with countdown
   - [ ] Show past appointment history
   - [ ] Contact information for changes/cancellations
   - [ ] Mobile-friendly appointment cards
-
-### Server-Sent Events Setup
-
-- [ ] **SSE endpoint** (`app/api/sse/route.ts`)
-
-  - [ ] Implement EventSource connection handling
-  - [ ] Use EventEmitter for real-time notifications
-  - [ ] Handle client connections and disconnections
-  - [ ] Broadcast booking updates to all clients
-
-- [ ] **SSE client integration** (`lib/hooks/useSSE.ts`)
-  - [ ] Custom hook for SSE connection management
-  - [ ] Automatic reconnection with exponential backoff
-  - [ ] Event filtering for relevant updates
-  - [ ] Graceful degradation when SSE unavailable
-
-### Real-time Features
-
-- [ ] **Live availability updates**
-
-  - [ ] Update calendar when bookings are made
-  - [ ] Show holds in real-time to prevent conflicts
-  - [ ] Update staff schedules when availability changes
-  - [ ] Refresh pricing when admin makes changes
-
-- [ ] **Hold status broadcasting**
-  - [ ] Notify when slots are held by other customers
-  - [ ] Update availability immediately on booking
-  - [ ] Show expired holds in real-time
-  - [ ] Broadcast booking confirmations
 
 ---
 
@@ -500,3 +531,24 @@ Beauty salon booking system with 5-minute hold system, mobile-first design, and 
 - `EMAILJS_SERVICE_ID` - EmailJS service ID
 - `EMAILJS_TEMPLATE_ID` - Email template ID
 - `EMAILJS_PUBLIC_KEY` - EmailJS public key
+
+---
+
+## 🔮 Future Enhancements (Post-MVP)
+
+### Real-time Updates via Server-Sent Events
+
+- [ ] **SSE endpoint implementation** (`app/api/sse/route.ts`)
+- [ ] **SSE client integration** (`lib/hooks/useSSE.ts`) -
+- [ ] **Live availability updates** - Replace API checks with real-time SSE updates
+- [ ] **Hold status broadcasting** - Real-time notification of slot holds across browsers
+- [ ] **Admin dashboard live updates** - Real-time booking notifications for staff
+- [ ] **Customer notifications** - Push updates for booking changes/confirmations
+
+### Advanced Features
+
+- [ ] **Email/SMS notifications** - Automated reminders and confirmations
+- [ ] **Customer loyalty program** - Points and rewards system
+- [ ] **Advanced scheduling** - Recurring appointments and bulk booking
+- [ ] **Payment integration** - Stripe/PayPal for online payments
+- [ ] **Reviews and ratings** - Customer feedback system

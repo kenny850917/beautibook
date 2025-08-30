@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import BaseCalendar from "@/components/Calendar/BaseCalendar";
+import AppointmentEditModal from "@/components/Common/AppointmentEditModal";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 
 interface DashboardStats {
@@ -21,7 +22,7 @@ interface AdminCalendarEvent {
     staffId: string;
     serviceId?: string;
     customerId?: string;
-    status?: "confirmed" | "pending" | "cancelled";
+    status?: "confirmed" | "pending" | "cancelled"; // Match BaseCalendar expectations (lowercase)
   };
 }
 
@@ -35,6 +36,8 @@ interface BookingData {
   customer_email: string | null;
   customer_id: string | null;
   final_price: number;
+  status: "CONFIRMED" | "PENDING" | "CANCELLED" | "NOSHOW";
+  notes: string | null;
   created_at: string;
   staff: {
     id: string;
@@ -49,6 +52,24 @@ interface BookingData {
   };
 }
 
+interface AdminAppointmentEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource: {
+    serviceName: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    price: number;
+    status: "CONFIRMED" | "PENDING" | "CANCELLED" | "NOSHOW"; // Match database enum format
+    notes?: string;
+    staffId: string;
+    staffName: string;
+  };
+}
+
 export default function AdminDashboardContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [stats, setStats] = useState<DashboardStats>({
@@ -58,26 +79,138 @@ export default function AdminDashboardContent() {
     pendingHolds: 0,
   });
   const [events, setEvents] = useState<AdminCalendarEvent[]>([]);
+  const [adminAppointments, setAdminAppointments] = useState<
+    AdminAppointmentEvent[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<{
+    id: string;
+    title: string;
+    start: Date;
+    end: Date;
+    resource: {
+      serviceName: string;
+      customerName: string;
+      customerPhone: string;
+      customerEmail?: string;
+      price: number;
+      status: "CONFIRMED" | "PENDING" | "CANCELLED" | "NOSHOW"; // Match database enum format
+      notes?: string;
+      staffId?: string;
+      staffName?: string;
+    };
+  } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Load dashboard data
+  // Load bookings for a specific date range
+  const loadBookings = useCallback(async (date: Date) => {
+    try {
+      setIsLoadingBookings(true);
+
+      // Get the week range for the current calendar view
+      const weekStart = startOfWeek(date);
+      const weekEnd = endOfWeek(date);
+
+      // Fetch bookings for the specific week using date range
+      const bookingsResponse = await fetch(
+        `/api/admin/bookings?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+      );
+
+      if (!bookingsResponse.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+
+      const bookingsData = await bookingsResponse.json();
+
+      // Convert bookings to calendar events
+      const calendarEvents: AdminCalendarEvent[] = bookingsData.bookings.map(
+        (booking: BookingData) => {
+          const startTime = new Date(booking.slot_datetime);
+          const endTime = new Date(
+            startTime.getTime() + booking.service.duration_minutes * 60 * 1000
+          );
+
+          // Convert database status (uppercase) to calendar format (lowercase)
+          const calendarStatusMap = {
+            CONFIRMED: "confirmed",
+            PENDING: "pending",
+            CANCELLED: "cancelled",
+            NOSHOW: "cancelled", // Treat no-show as cancelled for calendar display
+          } as const;
+
+          const calendarStatus =
+            calendarStatusMap[booking.status] || "confirmed";
+          console.log(
+            `[ADMIN CALENDAR] Converting status: ${booking.status} → ${calendarStatus} for ${booking.customer_name}`
+          );
+
+          return {
+            id: booking.id,
+            title: `${booking.service.name} - ${booking.customer_name}`,
+            start: startTime,
+            end: endTime,
+            resource: {
+              type: "booking" as const,
+              staffId: booking.staff_id,
+              serviceId: booking.service_id,
+              customerId: booking.customer_id,
+              status: calendarStatus,
+            },
+          };
+        }
+      );
+
+      // Convert bookings to admin appointment events for the edit modal
+      const appointmentEvents: AdminAppointmentEvent[] =
+        bookingsData.bookings.map((booking: BookingData) => {
+          const startTime = new Date(booking.slot_datetime);
+          const endTime = new Date(
+            startTime.getTime() + booking.service.duration_minutes * 60 * 1000
+          );
+
+          return {
+            id: booking.id,
+            title: `${booking.service.name} - ${booking.customer_name}`,
+            start: startTime,
+            end: endTime,
+            resource: {
+              serviceName: booking.service.name,
+              customerName: booking.customer_name,
+              customerPhone: booking.customer_phone,
+              customerEmail: booking.customer_email || undefined,
+              price: booking.final_price,
+              status: booking.status, // Pass raw database status to modal for proper conversion
+              notes: booking.notes || undefined,
+              staffId: booking.staff_id,
+              staffName: booking.staff.name,
+            },
+          };
+        });
+
+      setEvents(calendarEvents);
+      setAdminAppointments(appointmentEvents);
+    } catch (error) {
+      console.error("Error loading bookings:", error);
+      setEvents([]);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  }, []);
+
+  // Load dashboard stats (once on mount)
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const loadDashboardStats = async () => {
       try {
         setIsLoading(true);
 
-        // Fetch real dashboard stats and bookings
-        const [statsResponse, bookingsResponse] = await Promise.all([
-          fetch("/api/admin/stats"),
-          fetch("/api/admin/bookings?status=week"),
-        ]);
+        const statsResponse = await fetch("/api/admin/stats");
 
-        if (!statsResponse.ok || !bookingsResponse.ok) {
-          throw new Error("Failed to fetch dashboard data");
+        if (!statsResponse.ok) {
+          throw new Error("Failed to fetch dashboard stats");
         }
 
         const statsData = await statsResponse.json();
-        const bookingsData = await bookingsResponse.json();
 
         // Update stats from real API data
         const realStats: DashboardStats = {
@@ -87,34 +220,9 @@ export default function AdminDashboardContent() {
           pendingHolds: statsData.stats.pendingHolds,
         };
 
-        // Convert real bookings to calendar events
-        const realEvents: AdminCalendarEvent[] = bookingsData.bookings.map(
-          (booking: BookingData) => {
-            const startTime = new Date(booking.slot_datetime);
-            const endTime = new Date(
-              startTime.getTime() + booking.service.duration_minutes * 60 * 1000
-            );
-
-            return {
-              id: booking.id,
-              title: `${booking.service.name} - ${booking.customer_name}`,
-              start: startTime,
-              end: endTime,
-              resource: {
-                type: "booking" as const,
-                staffId: booking.staff_id,
-                serviceId: booking.service_id,
-                customerId: booking.customer_id,
-                status: "confirmed" as const,
-              },
-            };
-          }
-        );
-
         setStats(realStats);
-        setEvents(realEvents);
       } catch (error) {
-        console.error("Error loading dashboard data:", error);
+        console.error("Error loading dashboard stats:", error);
 
         // Fallback to empty data on error
         setStats({
@@ -123,14 +231,99 @@ export default function AdminDashboardContent() {
           activeStaff: 0,
           pendingHolds: 0,
         });
-        setEvents([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadDashboardData();
-  }, [currentDate]);
+    loadDashboardStats();
+  }, []);
+
+  // Load bookings when calendar date changes
+  useEffect(() => {
+    loadBookings(currentDate);
+  }, [currentDate, loadBookings]);
+
+  // Handle saving appointment updates
+  const handleSaveAppointment = useCallback(
+    async (updatedAppointment: {
+      id: string;
+      title: string;
+      start: Date;
+      end: Date;
+      resource: {
+        serviceName: string;
+        customerName: string;
+        customerPhone: string;
+        customerEmail?: string;
+        price: number;
+        status: "CONFIRMED" | "PENDING" | "CANCELLED" | "NOSHOW"; // Match database enum format
+        notes?: string;
+        staffId?: string;
+        staffName?: string;
+      };
+    }) => {
+      try {
+        const requestData = {
+          customerName: updatedAppointment.resource.customerName,
+          customerPhone: updatedAppointment.resource.customerPhone,
+          customerEmail: updatedAppointment.resource.customerEmail || "",
+          price: updatedAppointment.resource.price,
+          status: updatedAppointment.resource.status, // Status is already in correct database format
+          notes: updatedAppointment.resource.notes || "",
+        };
+
+        console.log(
+          "[ADMIN FRONTEND] Sending booking update data:",
+          requestData
+        );
+        console.log("[ADMIN FRONTEND] Data types being sent:", {
+          customerName: typeof requestData.customerName,
+          customerPhone: typeof requestData.customerPhone,
+          customerEmail: typeof requestData.customerEmail,
+          price: typeof requestData.price,
+          status: typeof requestData.status,
+          notes: typeof requestData.notes,
+        });
+
+        const response = await fetch(
+          `/api/admin/bookings/${updatedAppointment.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestData),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("API Error:", errorData);
+          throw new Error(errorData.error || "Failed to update booking");
+        }
+
+        const result = await response.json();
+        console.log("Booking updated successfully:", result);
+
+        // Clear events first to force React to detect changes
+        setEvents([]);
+        setAdminAppointments([]);
+
+        // Reload bookings from server to get fresh data
+        console.log("Reloading bookings after update...");
+        await loadBookings(currentDate);
+        console.log("Bookings reloaded successfully");
+
+        // Force component refresh - modal will close itself
+        setRefreshKey((prev) => prev + 1);
+      } catch (error) {
+        console.error("Error saving booking:", error);
+        throw error; // Let the modal handle the error display
+      }
+    },
+    [currentDate, loadBookings]
+  );
 
   const formatCurrency = (cents: number): string => {
     return new Intl.NumberFormat("en-US", {
@@ -277,22 +470,74 @@ export default function AdminDashboardContent() {
       {/* Master Calendar */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Master Calendar - Week of{" "}
-            {format(startOfWeek(currentDate), "MMM d")} -{" "}
-            {format(endOfWeek(currentDate), "MMM d, yyyy")}
-          </h3>
-          <p className="mt-1 text-sm text-gray-600">
-            All staff bookings and schedules
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">
+                Master Calendar - Week of{" "}
+                {format(startOfWeek(currentDate), "MMM d")} -{" "}
+                {format(endOfWeek(currentDate), "MMM d, yyyy")}
+              </h3>
+              <p className="mt-1 text-sm text-gray-600">
+                All staff bookings and schedules
+              </p>
+            </div>
+            {isLoadingBookings && (
+              <div className="flex items-center text-sm text-gray-500">
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Loading appointments...
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="p-6">
           <BaseCalendar
+            key={`admin-calendar-${refreshKey}`}
             events={events}
             onSelectEvent={(event) => {
-              // Handle event selection - show booking details
-              console.log("Selected event:", event);
+              // Find the original appointment by ID
+              const appointment = adminAppointments.find(
+                (e) => e.id === event.id
+              );
+              if (appointment) {
+                // Map AdminAppointmentEvent to modal's expected type
+                setEditingAppointment({
+                  id: appointment.id,
+                  title: appointment.title,
+                  start: appointment.start,
+                  end: appointment.end,
+                  resource: {
+                    serviceName: appointment.resource.serviceName,
+                    customerName: appointment.resource.customerName,
+                    customerPhone: appointment.resource.customerPhone,
+                    customerEmail: appointment.resource.customerEmail,
+                    price: appointment.resource.price,
+                    status: appointment.resource.status,
+                    notes: appointment.resource.notes,
+                    staffId: appointment.resource.staffId,
+                    staffName: appointment.resource.staffName,
+                  },
+                });
+              }
             }}
             onSelectSlot={(slotInfo) => {
               // Handle slot selection - create new booking
@@ -383,6 +628,16 @@ export default function AdminDashboardContent() {
           </button>
         </div>
       </div>
+
+      {/* Appointment Edit Modal */}
+      {editingAppointment && (
+        <AppointmentEditModal
+          appointment={editingAppointment}
+          onClose={() => setEditingAppointment(null)}
+          onSave={handleSaveAppointment}
+          isStaffView={false}
+        />
+      )}
     </div>
   );
 }

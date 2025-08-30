@@ -168,6 +168,8 @@ export async function GET(request: NextRequest) {
       customer_email: appointment.customer_email,
       customer_id: appointment.customer_id,
       final_price: appointment.final_price,
+      status: appointment.status, // Added missing status field
+      notes: appointment.notes, // Added missing notes field
       created_at: appointment.created_at,
       staff: appointment.staff,
       service: appointment.service,

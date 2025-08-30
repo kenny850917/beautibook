@@ -36,7 +36,7 @@ export class BookingService {
     customerId?: string,
     customerEmail?: string
   ) {
-    return await prisma.$transaction(async (tx) => {
+    const booking = await prisma.$transaction(async (tx) => {
       // 1. Verify staff can perform this service
       const staff = await tx.staff.findUnique({
         where: { id: staffId },
@@ -181,6 +181,8 @@ export class BookingService {
 
       return booking;
     });
+
+    return booking;
   }
 
   /**

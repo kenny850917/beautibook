@@ -25,6 +25,13 @@ enum DayOfWeek {
   SUNDAY
 }
 
+enum BookingStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  NOSHOW
+}
+
 // User authentication and roles
 model User {
   id            String   @id @default(cuid())
@@ -134,19 +141,36 @@ model StaffServicePricing {
   @@map("staff_service_pricing")
 }
 
-// Staff availability schedules
+// Staff availability schedules - block-based approach
 model StaffAvailability {
   id            String     @id @default(cuid())
   staff_id      String
   day_of_week   DayOfWeek
-  start_time    String     // Format: "09:00"
-  end_time      String     // Format: "18:00"
+  start_time    String     // Working hours start: "09:00"
+  end_time      String     // Working hours end: "18:00"
   override_date DateTime?  // For specific date overrides (time off)
 
   // Relations
-  staff Staff @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  staff        Staff           @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  scheduleBlocks ScheduleBlock[]
 
   @@map("staff_availability")
+}
+
+// Blocked periods within working hours (lunch, breaks, etc.)
+model ScheduleBlock {
+  id                   String   @id @default(cuid())
+  staff_availability_id String
+  block_start_time     String   // "12:00"
+  block_end_time       String   // "13:00"
+  block_type           String   // "lunch", "break", "appointment", "personal"
+  title                String   // "Lunch Break", "Team Meeting", etc.
+  is_recurring         Boolean  @default(true) // If true, applies to all weeks
+
+  // Relations
+  staffAvailability StaffAvailability @relation(fields: [staff_availability_id], references: [id], onDelete: Cascade)
+
+  @@map("schedule_blocks")
 }
 
 // 5-minute booking holds system
@@ -192,16 +216,18 @@ model Customer {
 
 // Confirmed bookings
 model Booking {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   staff_id        String
   service_id      String
-  slot_datetime   DateTime // UTC timestamp for the booking
+  slot_datetime   DateTime      // UTC timestamp for the booking
   customer_name   String
   customer_phone  String
-  customer_id     String?  // Link to Customer record for CRM
-  customer_email  String?  // For email confirmations
-  final_price     Int      // Price in cents at time of booking
-  created_at      DateTime @default(now())
+  customer_id     String?       // Link to Customer record for CRM
+  customer_email  String?       // For email confirmations
+  final_price     Int           // Price in cents at time of booking
+  status          BookingStatus @default(CONFIRMED) // Booking status
+  notes           String?       // Optional notes about the booking
+  created_at      DateTime      @default(now())
 
   // Relations
   staff    Staff     @relation(fields: [staff_id], references: [id], onDelete: Cascade)
