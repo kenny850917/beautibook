@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import BaseCalendar from "@/components/Calendar/BaseCalendar";
 import AppointmentEditModal from "@/components/Common/AppointmentEditModal";
 import { format, isToday, isTomorrow, startOfWeek, endOfWeek } from "date-fns";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 interface CalendarEvent {
   id: string;
@@ -178,10 +179,16 @@ export default function StaffScheduleContent() {
 
         const data = await response.json();
 
-        // Transform API data to AppointmentEvent format
+        // Transform API data to AppointmentEvent format using timezone-safe parsing
         const realEvents: AppointmentEvent[] = data.appointments.map(
           (appointment: StaffAppointmentData) => {
-            const startTime = new Date(appointment.slot_datetime);
+            // Parse using universal timezone utilities
+            const startComponents = parseIsoToPstComponents(
+              appointment.slot_datetime
+            );
+            const startTime = new Date(
+              startComponents.date + "T" + startComponents.time
+            );
             const endTime = new Date(
               startTime.getTime() +
                 appointment.service.duration_minutes * 60 * 1000
@@ -245,10 +252,16 @@ export default function StaffScheduleContent() {
 
         const data = await response.json();
 
-        // Transform and calculate today's stats
+        // Transform and calculate today's stats using timezone-safe parsing
         const todayEvents = data.appointments.map(
           (appointment: StaffAppointmentData) => {
-            const startTime = new Date(appointment.slot_datetime);
+            // Parse using universal timezone utilities
+            const startComponents = parseIsoToPstComponents(
+              appointment.slot_datetime
+            );
+            const startTime = new Date(
+              startComponents.date + "T" + startComponents.time
+            );
             const endTime = new Date(
               startTime.getTime() +
                 appointment.service.duration_minutes * 60 * 1000

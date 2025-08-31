@@ -10,13 +10,10 @@ import {
 } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { toZonedTime } from "date-fns-tz";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 // Setup the localizer for moment
 const localizer = momentLocalizer(moment);
-
-// PST timezone
-const PST_TIMEZONE = "America/Los_Angeles";
 
 interface CalendarEvent {
   id: string;
@@ -277,13 +274,27 @@ export default function BaseCalendar({
     [onNavigate]
   );
 
-  // Format events for React Big Calendar
+  // Convert UTC events to PST for display using universal utilities
   const formattedEvents = useMemo(() => {
-    return events.map((event) => ({
-      ...event,
-      start: toZonedTime(event.start, PST_TIMEZONE),
-      end: toZonedTime(event.end, PST_TIMEZONE),
-    }));
+    return events.map((event) => {
+      // Convert to PST for calendar display using universal utilities
+      const startComponents = parseIsoToPstComponents(
+        event.start.toISOString()
+      );
+      const endComponents = parseIsoToPstComponents(event.end.toISOString());
+
+      // Reconstruct as local dates for React Big Calendar
+      const startPst = new Date(
+        startComponents.date + "T" + startComponents.time
+      );
+      const endPst = new Date(endComponents.date + "T" + endComponents.time);
+
+      return {
+        ...event,
+        start: startPst,
+        end: endPst,
+      };
+    });
   }, [events]);
 
   // Mobile-specific calendar props

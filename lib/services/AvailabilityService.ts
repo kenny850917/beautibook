@@ -1,6 +1,7 @@
 import { prisma } from "./PrismaService";
 import { DayOfWeek } from "@prisma/client";
 import { isWithinInterval, parse, format } from "date-fns";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 // Timezone functions removed - not used in this service
 
 /**
@@ -396,9 +397,13 @@ export class AvailabilityService {
   }
 
   /**
-   * Get day of week enum from Date object
+   * Get day of week enum from Date object (timezone-safe)
    */
   private getDayOfWeekFromDate(date: Date): DayOfWeek {
+    // Convert Date to ISO and use timezone-safe parsing
+    const isoString = date.toISOString();
+    const components = parseIsoToPstComponents(isoString);
+
     const dayMap = {
       0: DayOfWeek.SUNDAY,
       1: DayOfWeek.MONDAY,
@@ -409,7 +414,7 @@ export class AvailabilityService {
       6: DayOfWeek.SATURDAY,
     };
 
-    return dayMap[date.getDay() as keyof typeof dayMap];
+    return dayMap[components.dayOfWeek as keyof typeof dayMap];
   }
 
   /**

@@ -1,4 +1,5 @@
 import emailjs from "@emailjs/browser";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 /**
  * Singleton service for EmailJS integration
@@ -318,15 +319,21 @@ export class EmailService {
     },
     customerEmail?: string
   ) {
-    const dateTime = new Date(booking.slot_datetime).toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    });
+    // Use timezone-safe date formatting for emails
+    const components = parseIsoToPstComponents(
+      booking.slot_datetime.toISOString()
+    );
+    const pstDate = new Date(components.date + "T" + components.time);
+    const dateTime =
+      pstDate.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "America/Los_Angeles", // Explicitly specify PST
+      }) + " PST";
 
     const duration =
       booking.service.duration_minutes >= 60
@@ -350,4 +357,3 @@ export class EmailService {
     };
   }
 }
-

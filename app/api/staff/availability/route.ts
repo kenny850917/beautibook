@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { PrismaService } from "@/lib/services/PrismaService";
 import { DayOfWeek } from "@prisma/client";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 // Validation schema for staff self-service availability updates with blocks
 const StaffAvailabilitySchema = z.object({
@@ -357,7 +358,10 @@ export async function PUT(request: NextRequest) {
         // Check each day being updated
         for (const schedule of schedules) {
           const dayBookings = futureBookings.filter((booking) => {
-            const bookingDay = booking.slot_datetime.getDay();
+            // Use timezone-safe day comparison
+            const bookingComponents = parseIsoToPstComponents(
+              booking.slot_datetime.toISOString()
+            );
             const scheduleDay = {
               SUNDAY: 0,
               MONDAY: 1,
@@ -368,7 +372,7 @@ export async function PUT(request: NextRequest) {
               SATURDAY: 6,
             }[schedule.day_of_week];
 
-            return bookingDay === scheduleDay;
+            return bookingComponents.dayOfWeek === scheduleDay;
           });
 
           // If making unavailable or reducing hours, check for conflicts

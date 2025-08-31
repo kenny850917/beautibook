@@ -153,11 +153,13 @@ export function generateTimeSlots(): string[] {
 }
 
 /**
- * Check if a date is an operating day (Tuesday-Saturday)
+ * Check if a date is an operating day (Tuesday-Saturday) - timezone safe
  */
 export function isOperatingDay(date: Date): boolean {
-  const dayOfWeek = date.getDay();
-  return OPERATING_DAYS.includes(dayOfWeek as (typeof OPERATING_DAYS)[number]);
+  const components = parseIsoToPstComponents(date.toISOString());
+  return OPERATING_DAYS.includes(
+    components.dayOfWeek as (typeof OPERATING_DAYS)[number]
+  );
 }
 
 /**

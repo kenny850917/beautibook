@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import BaseCalendar from "@/components/Calendar/BaseCalendar";
 import AppointmentEditModal from "@/components/Common/AppointmentEditModal";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 interface DashboardStats {
   todayBookings: number;
@@ -123,10 +124,16 @@ export default function AdminDashboardContent() {
 
       const bookingsData = await bookingsResponse.json();
 
-      // Convert bookings to calendar events
+      // Convert bookings to calendar events using timezone-safe parsing
       const calendarEvents: AdminCalendarEvent[] = bookingsData.bookings.map(
         (booking: BookingData) => {
-          const startTime = new Date(booking.slot_datetime);
+          // Parse using universal timezone utilities
+          const startComponents = parseIsoToPstComponents(
+            booking.slot_datetime
+          );
+          const startTime = new Date(
+            startComponents.date + "T" + startComponents.time
+          );
           const endTime = new Date(
             startTime.getTime() + booking.service.duration_minutes * 60 * 1000
           );
@@ -161,10 +168,16 @@ export default function AdminDashboardContent() {
         }
       );
 
-      // Convert bookings to admin appointment events for the edit modal
+      // Convert bookings to admin appointment events for the edit modal using timezone-safe parsing
       const appointmentEvents: AdminAppointmentEvent[] =
         bookingsData.bookings.map((booking: BookingData) => {
-          const startTime = new Date(booking.slot_datetime);
+          // Parse using universal timezone utilities
+          const startComponents = parseIsoToPstComponents(
+            booking.slot_datetime
+          );
+          const startTime = new Date(
+            startComponents.date + "T" + startComponents.time
+          );
           const endTime = new Date(
             startTime.getTime() + booking.service.duration_minutes * 60 * 1000
           );
