@@ -298,11 +298,18 @@ export class AvailabilityService {
     });
 
     // Get active holds
+    // Add 30-second buffer to account for serverless timing differences
+    const now = new Date();
+    const bufferTime = new Date(now.getTime() + 30 * 1000); // 30 second buffer
+    console.log(
+      `[AVAILABILITY DEBUG] Checking holds for staff ${staffId} at ${now.toISOString()} (with 30s buffer: ${bufferTime.toISOString()})`
+    );
+
     const activeHolds = await prisma.bookingHold.findMany({
       where: {
         staff_id: staffId,
         expires_at: {
-          gt: new Date(),
+          gt: bufferTime, // Use buffer time for serverless environments
         },
         slot_datetime: {
           gte: startOfDay,
@@ -312,6 +319,19 @@ export class AvailabilityService {
       include: {
         service: true,
       },
+    });
+
+    console.log(
+      `[AVAILABILITY DEBUG] Found ${activeHolds.length} active holds for availability check`
+    );
+    activeHolds.forEach((hold) => {
+      console.log(
+        `[AVAILABILITY DEBUG] Hold: ${
+          hold.id
+        } expires at ${hold.expires_at.toISOString()} (in ${Math.round(
+          (hold.expires_at.getTime() - now.getTime()) / 1000
+        )}s)`
+      );
     });
 
     // Generate potential slots
