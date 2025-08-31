@@ -241,6 +241,10 @@ export class AvailabilityService {
     serviceDurationMinutes: number,
     slotIntervalMinutes: number = 15
   ): Promise<string[]> {
+    // Clean up expired holds first to prevent stale availability data
+    const { BookingHoldService } = await import("./BookingHoldService");
+    await BookingHoldService.getInstance().cleanupExpiredHolds();
+
     const dayOfWeek = this.getDayOfWeekFromDate(date);
     const availability = await this.getStaffAvailability(
       staffId,

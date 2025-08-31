@@ -68,6 +68,9 @@ export async function GET(request: NextRequest) {
     const holdService = BookingHoldService.getInstance();
     const prisma = PrismaService.getInstance();
 
+    // Clean up expired holds first to prevent stale conflicts
+    await holdService.cleanupExpiredHolds();
+
     // Get service duration for proper slot validation
     const service = await prisma.service.findUnique({
       where: { id: validServiceId },
