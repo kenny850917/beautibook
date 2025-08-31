@@ -297,6 +297,26 @@ export class AvailabilityService {
       },
     });
 
+    console.log(
+      `[AVAILABILITY DEBUG] Found ${
+        existingBookings.length
+      } existing bookings for staff ${staffId} on ${format(date, "yyyy-MM-dd")}`
+    );
+    existingBookings.forEach((booking) => {
+      const bookingEnd = new Date(
+        booking.slot_datetime.getTime() +
+          booking.service.duration_minutes * 60000
+      );
+      console.log(
+        `[AVAILABILITY DEBUG] Existing booking: ${format(
+          booking.slot_datetime,
+          "h:mm a"
+        )} - ${format(bookingEnd, "h:mm a")} (${
+          booking.service.duration_minutes
+        }min)`
+      );
+    });
+
     // Get active holds
     // Add 30-second buffer to account for serverless timing differences
     const now = new Date();
@@ -372,20 +392,22 @@ export class AvailabilityService {
               booking.service.duration_minutes * 60000
           );
 
-          // More comprehensive overlap detection
-          return (
-            // Our service starts during an existing booking
-            (currentSlot >= booking.slot_datetime &&
-              currentSlot < bookingEnd) ||
-            // Our service ends during an existing booking
-            (slotEndTime > booking.slot_datetime &&
-              slotEndTime <= bookingEnd) ||
-            // Our service completely covers an existing booking
-            (currentSlot <= booking.slot_datetime &&
-              slotEndTime >= bookingEnd) ||
-            // Existing booking completely covers our service
-            (booking.slot_datetime <= currentSlot && bookingEnd >= slotEndTime)
-          );
+          // Use same logic as BookingHoldService validation (which works correctly)
+          const hasOverlap = bookingEnd > currentSlot;
+
+          if (hasOverlap) {
+            console.log(
+              `[AVAILABILITY CONFLICT] Booking ${format(
+                booking.slot_datetime,
+                "h:mm a"
+              )} - ${format(bookingEnd, "h:mm a")} conflicts with slot ${format(
+                currentSlot,
+                "h:mm a"
+              )} - ${format(slotEndTime, "h:mm a")}`
+            );
+          }
+
+          return hasOverlap;
         });
 
         // Check for conflicts with active holds (improved overlap detection)
