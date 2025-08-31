@@ -125,14 +125,10 @@ export async function GET(request: NextRequest) {
       `[AVAILABILITY DEBUG] Checking ${staff.name} availability for ${validDate} (${dayOfWeek}) - timezone-insensitive lookup`
     );
 
-    // Create timezone-insensitive date for override checks
-    const [year, month, day] = validDate.split("-").map(Number);
-    const overrideDate = new Date(year, month - 1, day); // Local date without timezone conversion
-
     const staffAvailable = await availabilityService.getStaffAvailability(
       validStaffId,
       dayOfWeek,
-      overrideDate
+      pstDate
     );
 
     console.log(
@@ -157,7 +153,7 @@ export async function GET(request: NextRequest) {
     // Use the updated AvailabilityService which factors in schedule blocks
     const availableSlotTimes = await availabilityService.getAvailableSlots(
       validStaffId,
-      overrideDate, // Use timezone-insensitive date
+      pstDate, // Keep PST for time calculations
       service.duration_minutes,
       15 // 15-minute intervals
     );
@@ -167,18 +163,18 @@ export async function GET(request: NextRequest) {
       availableSlotTimes
     );
 
-    // Convert to frontend format with local times (timezone-insensitive)
+    // Convert to frontend format with PST times (keep original time handling)
     const timeSlots: TimeSlot[] = availableSlotTimes.map((timeStr) => {
-      // Parse the time string (e.g., "09:00") and create local date
+      // Parse the time string (e.g., "09:00") and create PST date
       const [hour, minute] = timeStr.split(":").map(Number);
-      const localSlotTime = new Date(overrideDate);
-      localSlotTime.setHours(hour, minute, 0, 0);
+      const pstSlotTime = new Date(pstDate);
+      pstSlotTime.setHours(hour, minute, 0, 0);
 
-      // For storage, we'll keep it simple and just use the local time as UTC
-      const utcSlotTime = new Date(localSlotTime);
+      // Convert to UTC for storage
+      const utcSlotTime = fromZonedTime(pstSlotTime, PST_TIMEZONE);
 
       return {
-        time: format(localSlotTime, "h:mm a"), // Local time formatted for display
+        time: format(pstSlotTime, "h:mm a"), // PST formatted for display
         datetime: utcSlotTime.toISOString(),
         available: true, // These are already filtered as available
       };
