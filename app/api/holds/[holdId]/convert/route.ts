@@ -94,7 +94,7 @@ export async function POST(
       marketingConsent: marketingConsent || false,
     });
 
-    // Create the booking with customer linkage
+    // Create the booking with customer linkage (skip availability check for hold conversions)
     const booking = await bookingService.createBooking(
       hold.staff_id,
       hold.service_id,
@@ -103,7 +103,8 @@ export async function POST(
       customerPhone,
       hold.session_id,
       customer.id, // Link to customer
-      customerEmail || undefined
+      customerEmail || undefined,
+      true // skipAvailabilityCheck - holds already guarantee availability
     );
 
     // Update customer statistics after booking creation

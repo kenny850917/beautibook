@@ -34,7 +34,8 @@ export class BookingService {
     customerPhone: string,
     sessionId?: string,
     customerId?: string,
-    customerEmail?: string
+    customerEmail?: string,
+    skipAvailabilityCheck?: boolean // Skip availability check for hold conversions
   ) {
     const booking = await prisma.$transaction(async (tx) => {
       // 1. Verify staff can perform this service
@@ -109,15 +110,17 @@ export class BookingService {
         throw new Error("Booking conflicts with existing appointment");
       }
 
-      // 5. Check staff availability
-      const isAvailable = await this.availabilityService.isStaffAvailable(
-        staffId,
-        slotDateTime,
-        service.duration_minutes
-      );
+      // 5. Check staff availability (skip for hold conversions as they're already validated)
+      if (!skipAvailabilityCheck) {
+        const isAvailable = await this.availabilityService.isStaffAvailable(
+          staffId,
+          slotDateTime,
+          service.duration_minutes
+        );
 
-      if (!isAvailable) {
-        throw new Error("Staff is not available at this time");
+        if (!isAvailable) {
+          throw new Error("Staff is not available at this time");
+        }
       }
 
       // 6. Get final price (staff override or base price)
