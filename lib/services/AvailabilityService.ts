@@ -302,6 +302,12 @@ export class AvailabilityService {
         existingBookings.length
       } existing bookings for staff ${staffId} on ${format(date, "yyyy-MM-dd")}`
     );
+    console.log(
+      `[ENVIRONMENT DEBUG] Server time: ${new Date().toISOString()}, Date range: ${format(
+        startOfDay,
+        "yyyy-MM-dd HH:mm:ss"
+      )} to ${format(endOfDay, "yyyy-MM-dd HH:mm:ss")}`
+    );
     existingBookings.forEach((booking) => {
       const bookingEnd = new Date(
         booking.slot_datetime.getTime() +
@@ -313,7 +319,7 @@ export class AvailabilityService {
           "h:mm a"
         )} - ${format(bookingEnd, "h:mm a")} (${
           booking.service.duration_minutes
-        }min)`
+        }min) [ISO: ${booking.slot_datetime.toISOString()}]`
       );
     });
 
@@ -345,12 +351,18 @@ export class AvailabilityService {
       `[AVAILABILITY DEBUG] Found ${activeHolds.length} active holds for availability check`
     );
     activeHolds.forEach((hold) => {
+      const holdEnd = new Date(
+        hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
+      );
       console.log(
-        `[AVAILABILITY DEBUG] Hold: ${
-          hold.id
-        } expires at ${hold.expires_at.toISOString()} (in ${Math.round(
+        `[AVAILABILITY DEBUG] Hold: ${hold.id} ${format(
+          hold.slot_datetime,
+          "h:mm a"
+        )} - ${format(holdEnd, "h:mm a")} (${
+          hold.service.duration_minutes
+        }min) expires at ${hold.expires_at.toISOString()} (in ${Math.round(
           (hold.expires_at.getTime() - now.getTime()) / 1000
-        )}s)`
+        )}s) [ISO: ${hold.slot_datetime.toISOString()}]`
       );
     });
 
@@ -398,9 +410,19 @@ export class AvailabilityService {
           const hasOverlap =
             booking.slot_datetime < slotEndTime && currentSlot < bookingEnd;
 
+          console.log(
+            `[BOOKING CHECK] Slot ${format(currentSlot, "h:mm a")} - ${format(
+              slotEndTime,
+              "h:mm a"
+            )} vs Booking ${format(booking.slot_datetime, "h:mm a")} - ${format(
+              bookingEnd,
+              "h:mm a"
+            )}: ${hasOverlap ? "CONFLICT" : "NO CONFLICT"}`
+          );
+
           if (hasOverlap) {
             console.log(
-              `[AVAILABILITY CONFLICT] Booking ${format(
+              `[AVAILABILITY CONFLICT] ❌ Booking ${format(
                 booking.slot_datetime,
                 "h:mm a"
               )} - ${format(bookingEnd, "h:mm a")} conflicts with slot ${format(
@@ -419,20 +441,47 @@ export class AvailabilityService {
             hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
           );
 
-          // More comprehensive overlap detection
-          return (
-            // Our service starts during an existing hold
-            (currentSlot >= hold.slot_datetime && currentSlot < holdEnd) ||
-            // Our service ends during an existing hold
-            (slotEndTime > hold.slot_datetime && slotEndTime <= holdEnd) ||
-            // Our service completely covers an existing hold
-            (currentSlot <= hold.slot_datetime && slotEndTime >= holdEnd) ||
-            // Existing hold completely covers our service
-            (hold.slot_datetime <= currentSlot && holdEnd >= slotEndTime)
+          // Same logic as booking conflicts for consistency
+          const hasOverlap =
+            hold.slot_datetime < slotEndTime && currentSlot < holdEnd;
+
+          console.log(
+            `[HOLD CHECK] Slot ${format(currentSlot, "h:mm a")} - ${format(
+              slotEndTime,
+              "h:mm a"
+            )} vs Hold ${format(hold.slot_datetime, "h:mm a")} - ${format(
+              holdEnd,
+              "h:mm a"
+            )}: ${hasOverlap ? "CONFLICT" : "NO CONFLICT"}`
           );
+
+          if (hasOverlap) {
+            console.log(
+              `[AVAILABILITY CONFLICT] ❌ Hold ${format(
+                hold.slot_datetime,
+                "h:mm a"
+              )} - ${format(holdEnd, "h:mm a")} conflicts with slot ${format(
+                currentSlot,
+                "h:mm a"
+              )} - ${format(slotEndTime, "h:mm a")}`
+            );
+          }
+
+          return hasOverlap;
         });
 
-        if (!hasBlockConflict && !hasBookingConflict && !hasHoldConflict) {
+        const slotIsAvailable =
+          !hasBlockConflict && !hasBookingConflict && !hasHoldConflict;
+
+        console.log(
+          `[SLOT DECISION] ${slotTime}: Block=${
+            hasBlockConflict ? "❌" : "✅"
+          }, Booking=${hasBookingConflict ? "❌" : "✅"}, Hold=${
+            hasHoldConflict ? "❌" : "✅"
+          } → ${slotIsAvailable ? "AVAILABLE" : "BLOCKED"}`
+        );
+
+        if (slotIsAvailable) {
           slots.push(slotTime);
         }
       }
@@ -441,6 +490,10 @@ export class AvailabilityService {
         currentSlot.getTime() + slotIntervalMinutes * 60000
       );
     }
+
+    console.log(
+      `[AVAILABILITY SUMMARY] Final result: ${slots.length} available slots after filtering ${existingBookings.length} bookings and ${activeHolds.length} holds`
+    );
 
     return slots;
   }
