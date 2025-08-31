@@ -62,7 +62,11 @@ export function DateTimeSelectionContent() {
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loadingServiceAndStaff, setLoadingServiceAndStaff] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    // Initialize with PST today
+    const todayPstIso = createPstDateTime(getTodayPst(), "12:00");
+    return parseISO(todayPstIso);
+  });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);

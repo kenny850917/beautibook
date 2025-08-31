@@ -369,27 +369,15 @@ export class AvailabilityService {
     });
 
     console.log(
-      `[AVAILABILITY DEBUG] Found ${activeHolds.length} active holds for availability check`
+      `[AVAILABILITY DEBUG] ${dateStr}: ${existingBookings.length} bookings, ${activeHolds.length} active holds to check`
     );
-    activeHolds.forEach((hold) => {
-      const holdEnd = new Date(
-        hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
-      );
-      console.log(
-        `[AVAILABILITY DEBUG] Hold: ${hold.id} ${this.formatPstTime(
-          hold.slot_datetime
-        )} - ${this.formatPstTime(holdEnd)} (${
-          hold.service.duration_minutes
-        }min) expires at ${hold.expires_at.toISOString()} (in ${Math.round(
-          (hold.expires_at.getTime() - now.getTime()) / 1000
-        )}s) [ISO: ${hold.slot_datetime.toISOString()}]`
-      );
-    });
 
-    // Generate potential slots
+    // Generate potential slots using PST timezone
     const slots: string[] = [];
-    const startTime = parse(availability.start_time, "HH:mm", date);
-    const endTime = parse(availability.end_time, "HH:mm", date);
+    // Create PST midnight for this date to use as base for time parsing
+    const pstMidnight = parseISO(createPstDateTime(dateStr, "00:00"));
+    const startTime = parse(availability.start_time, "HH:mm", pstMidnight);
+    const endTime = parse(availability.end_time, "HH:mm", pstMidnight);
 
     let currentSlot = startTime;
 
@@ -430,27 +418,16 @@ export class AvailabilityService {
           const hasOverlap =
             booking.slot_datetime < slotEndTime && currentSlot < bookingEnd;
 
-          console.log(
-            `[BOOKING CHECK] Slot ${this.formatPstTime(
-              currentSlot
-            )} - ${this.formatPstTime(
-              slotEndTime
-            )} vs Booking ${this.formatPstTime(
-              booking.slot_datetime
-            )} - ${this.formatPstTime(bookingEnd)}: ${
-              hasOverlap ? "CONFLICT" : "NO CONFLICT"
-            }`
-          );
-
+          // Only log conflicts, not every check
           if (hasOverlap) {
             console.log(
-              `[AVAILABILITY CONFLICT] ❌ Booking ${this.formatPstTime(
-                booking.slot_datetime
-              )} - ${this.formatPstTime(
-                bookingEnd
-              )} conflicts with slot ${this.formatPstTime(
+              `[BOOKING CONFLICT] ❌ Slot ${this.formatPstTime(
                 currentSlot
-              )} - ${this.formatPstTime(slotEndTime)}`
+              )} - ${this.formatPstTime(
+                slotEndTime
+              )} conflicts with booking ${this.formatPstTime(
+                booking.slot_datetime
+              )} - ${this.formatPstTime(bookingEnd)}`
             );
           }
 
@@ -467,27 +444,16 @@ export class AvailabilityService {
           const hasOverlap =
             hold.slot_datetime < slotEndTime && currentSlot < holdEnd;
 
-          console.log(
-            `[HOLD CHECK] Slot ${this.formatPstTime(
-              currentSlot
-            )} - ${this.formatPstTime(
-              slotEndTime
-            )} vs Hold ${this.formatPstTime(
-              hold.slot_datetime
-            )} - ${this.formatPstTime(holdEnd)}: ${
-              hasOverlap ? "CONFLICT" : "NO CONFLICT"
-            }`
-          );
-
+          // Only log conflicts, not every check
           if (hasOverlap) {
             console.log(
-              `[AVAILABILITY CONFLICT] ❌ Hold ${this.formatPstTime(
-                hold.slot_datetime
-              )} - ${this.formatPstTime(
-                holdEnd
-              )} conflicts with slot ${this.formatPstTime(
+              `[HOLD CONFLICT] ❌ Slot ${this.formatPstTime(
                 currentSlot
-              )} - ${this.formatPstTime(slotEndTime)}`
+              )} - ${this.formatPstTime(
+                slotEndTime
+              )} conflicts with hold ${this.formatPstTime(
+                hold.slot_datetime
+              )} - ${this.formatPstTime(holdEnd)}`
             );
           }
 
@@ -516,7 +482,13 @@ export class AvailabilityService {
     }
 
     console.log(
-      `[AVAILABILITY SUMMARY] Final result: ${slots.length} available slots after filtering ${existingBookings.length} bookings and ${activeHolds.length} holds`
+      `[AVAILABILITY SUMMARY] ${dateStr} ${this.formatPstTime(
+        startTime
+      )}-${this.formatPstTime(endTime)}: ${
+        slots.length
+      } available slots (filtered ${existingBookings.length} bookings, ${
+        activeHolds.length
+      } holds)`
     );
 
     return slots;

@@ -13,7 +13,10 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   parseIsoToPstComponents,
   getPstDateForCalculations,
+  getTodayPst,
+  createPstDateTime,
 } from "@/lib/utils/calendar";
+import { parseISO } from "date-fns";
 
 // Setup the localizer for moment
 const localizer = momentLocalizer(moment);
@@ -69,7 +72,11 @@ export default function BaseCalendar({
   ...props
 }: BaseCalendarProps) {
   const [currentView, setCurrentView] = useState<View>(defaultView);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    // Initialize with PST today
+    const todayPstIso = createPstDateTime(getTodayPst(), "12:00");
+    return parseISO(todayPstIso);
+  });
 
   // Mobile-optimized toolbar
   const CustomToolbar = useCallback(

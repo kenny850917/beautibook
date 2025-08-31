@@ -467,13 +467,13 @@ export async function PUT(request: NextRequest) {
         const startDate = parseISO(startDateIso);
         const endDate = parseISO(endDateIso);
 
-        // Create time off entries for each day in the range
+        // Create time off entries for each day in the range using PST dates
         const timeOffDays: Date[] = [];
-        const currentDate = new Date(startDate);
+        let currentDate = startDate;
 
         while (currentDate <= endDate) {
           timeOffDays.push(new Date(currentDate));
-          currentDate.setDate(currentDate.getDate() + 1);
+          currentDate = addDays(currentDate, 1);
         }
 
         // Create override entries for time off

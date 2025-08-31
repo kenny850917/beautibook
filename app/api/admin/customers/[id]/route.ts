@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { CustomerService } from "@/lib/services/CustomerService";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 // Type definitions for booking analysis
 interface BookingForAnalysis {
@@ -154,7 +155,11 @@ function getPreferredTimeSlots(bookings: BookingForAnalysis[]): {
   const timeSlots = { morning: 0, afternoon: 0, evening: 0 };
 
   bookings.forEach((booking) => {
-    const hour = new Date(booking.slot_datetime).getHours();
+    // Use PST timezone for hour analysis
+    const components = parseIsoToPstComponents(
+      booking.slot_datetime.toISOString()
+    );
+    const hour = parseInt(components.time.split(":")[0]);
     if (hour < 12) timeSlots.morning++;
     else if (hour < 17) timeSlots.afternoon++;
     else timeSlots.evening++;
@@ -175,7 +180,11 @@ function getSeasonalPattern(bookings: BookingForAnalysis[]): {
   const seasons = { spring: 0, summer: 0, fall: 0, winter: 0 };
 
   bookings.forEach((booking) => {
-    const month = new Date(booking.slot_datetime).getMonth();
+    // Use PST timezone for month analysis
+    const components = parseIsoToPstComponents(
+      booking.slot_datetime.toISOString()
+    );
+    const month = parseInt(components.date.split("-")[1]) - 1; // 0-based month
     if (month >= 2 && month <= 4) seasons.spring++;
     else if (month >= 5 && month <= 7) seasons.summer++;
     else if (month >= 8 && month <= 10) seasons.fall++;

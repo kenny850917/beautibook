@@ -1,7 +1,7 @@
 import { prisma } from "./PrismaService";
 import { AvailabilityService } from "./AvailabilityService";
 import { parseISO } from "date-fns";
-import { createPstDateTime } from "@/lib/utils/calendar";
+import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
 
 /**
  * Singleton service for booking logic and conflict prevention
@@ -282,8 +282,10 @@ export class BookingService {
       throw new Error("Booking not found");
     }
 
-    // Check if booking is in the past
-    if (booking.slot_datetime < new Date()) {
+    // Check if booking is in the past using PST timezone
+    const nowPstIso = createPstDateTime(getTodayPst(), "00:00");
+    const nowPst = parseISO(nowPstIso);
+    if (booking.slot_datetime < nowPst) {
       throw new Error("Cannot cancel past bookings");
     }
 

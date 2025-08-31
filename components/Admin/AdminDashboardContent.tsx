@@ -7,7 +7,10 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import {
   parseIsoToPstComponents,
   createCalendarEvent,
+  getTodayPst,
+  createPstDateTime,
 } from "@/lib/utils/calendar";
+import { parseISO } from "date-fns";
 
 interface DashboardStats {
   todayBookings: number;
@@ -75,7 +78,11 @@ interface AdminAppointmentEvent {
 }
 
 export default function AdminDashboardContent() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    // Initialize with PST today
+    const todayPstIso = createPstDateTime(getTodayPst(), "12:00");
+    return parseISO(todayPstIso);
+  });
   const [stats, setStats] = useState<DashboardStats>({
     todayBookings: 0,
     weeklyRevenue: 0,

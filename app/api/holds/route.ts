@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { BookingHoldService } from "@/lib/services/BookingHoldService";
 import { AnalyticsService } from "@/lib/services/AnalyticsService";
+import { parseISO } from "date-fns";
+import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
 
 // Validation schemas following backend.mdc Zod patterns
 const CreateHoldSchema = z.object({
@@ -49,10 +51,12 @@ export async function POST(request: NextRequest) {
       validationResult.data;
 
     // Parse slot date/time
-    const slotDate = new Date(slotDateTime);
+    const slotDate = parseISO(slotDateTime);
 
-    // Validate slot is not in the past
-    if (slotDate <= new Date()) {
+    // Validate slot is not in the past using PST timezone
+    const nowPstIso = createPstDateTime(getTodayPst(), "00:00");
+    const nowPst = parseISO(nowPstIso);
+    if (slotDate <= nowPst) {
       return NextResponse.json(
         { error: "Cannot create hold for past time slots" },
         { status: 400 }

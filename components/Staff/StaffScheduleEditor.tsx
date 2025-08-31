@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { DayOfWeek } from "@prisma/client";
+import { parseIsoToPstComponents, getTodayPst } from "@/lib/utils/calendar";
 
 interface ScheduleBlock {
   id?: string;
@@ -458,11 +459,10 @@ export default function StaffScheduleEditor() {
           <div className="text-sm text-blue-800">
             {upcomingBookings.slice(0, 3).map((booking) => (
               <div key={booking.id} className="mb-1">
-                {new Date(booking.datetime).toLocaleDateString()} at{" "}
-                {new Date(booking.datetime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
+                {(() => {
+                  const components = parseIsoToPstComponents(booking.datetime);
+                  return `${components.date} at ${components.display}`;
+                })()}{" "}
                 - {booking.service}
               </div>
             ))}
@@ -646,7 +646,7 @@ export default function StaffScheduleEditor() {
                     start_date: e.target.value,
                   }))
                 }
-                min={new Date().toISOString().split("T")[0]}
+                min={getTodayPst()}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
@@ -664,10 +664,7 @@ export default function StaffScheduleEditor() {
                     end_date: e.target.value,
                   }))
                 }
-                min={
-                  timeOffForm.start_date ||
-                  new Date().toISOString().split("T")[0]
-                }
+                min={timeOffForm.start_date || getTodayPst()}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>

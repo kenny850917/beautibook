@@ -8,7 +8,10 @@ import { format, isToday, isTomorrow, startOfWeek, endOfWeek } from "date-fns";
 import {
   parseIsoToPstComponents,
   createCalendarEvent,
+  getTodayPst,
+  createPstDateTime,
 } from "@/lib/utils/calendar";
+import { parseISO } from "date-fns";
 
 interface CalendarEvent {
   id: string;
@@ -142,7 +145,11 @@ const convertToAppointmentDetails = (
 
 export default function StaffScheduleContent() {
   const { data: session } = useSession();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    // Initialize with PST today
+    const todayPstIso = createPstDateTime(getTodayPst(), "12:00");
+    return parseISO(todayPstIso);
+  });
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [appointments, setAppointments] = useState<AppointmentEvent[]>([]);
   const [todayStats, setTodayStats] = useState<DayStats>({
