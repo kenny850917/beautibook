@@ -34,8 +34,14 @@ export default withAuth(
       }
     }
 
-    // Customer API protection - Admin only access
+    // Customer API protection - Admin only access (except lookup for booking)
     if (pathname.startsWith("/api/customers")) {
+      // Allow public access to customer lookup for booking flow
+      if (pathname === "/api/customers/lookup") {
+        return NextResponse.next();
+      }
+
+      // Protect all other customer management APIs
       if (!token || token.role !== "ADMIN") {
         return new NextResponse(
           JSON.stringify({
@@ -66,6 +72,7 @@ export default withAuth(
           pathname.startsWith("/api/holds") ||
           pathname.startsWith("/api/bookings") ||
           pathname.startsWith("/api/staff") ||
+          pathname === "/api/customers/lookup" || // Allow customer lookup for booking
           pathname === "/" ||
           pathname.startsWith("/_next") ||
           pathname.startsWith("/public")
