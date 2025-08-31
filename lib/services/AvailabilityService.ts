@@ -392,8 +392,11 @@ export class AvailabilityService {
               booking.service.duration_minutes * 60000
           );
 
-          // Use same logic as BookingHoldService validation (which works correctly)
-          const hasOverlap = bookingEnd > currentSlot;
+          // Proper overlap detection: Two ranges overlap if:
+          // 1. Booking starts before slot ends AND
+          // 2. Slot starts before booking ends
+          const hasOverlap =
+            booking.slot_datetime < slotEndTime && currentSlot < bookingEnd;
 
           if (hasOverlap) {
             console.log(
