@@ -284,6 +284,12 @@ export class AvailabilityService {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    console.log(
+      `[TIMEZONE DEBUG] Input date: ${date.toISOString()}, Timezone: ${
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      }, startOfDay: ${startOfDay.toISOString()}, endOfDay: ${endOfDay.toISOString()}`
+    );
+
     const existingBookings = await prisma.booking.findMany({
       where: {
         staff_id: staffId,
@@ -303,6 +309,9 @@ export class AvailabilityService {
       } existing bookings for staff ${staffId} on ${format(date, "yyyy-MM-dd")}`
     );
     console.log(
+      `[QUERY DEBUG] Staff ID: ${staffId}, Service ID: ${serviceDurationMinutes}min service, Querying date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`
+    );
+    console.log(
       `[ENVIRONMENT DEBUG] Server time: ${new Date().toISOString()}, Date range: ${format(
         startOfDay,
         "yyyy-MM-dd HH:mm:ss"
@@ -319,7 +328,9 @@ export class AvailabilityService {
           "h:mm a"
         )} - ${format(bookingEnd, "h:mm a")} (${
           booking.service.duration_minutes
-        }min) [ISO: ${booking.slot_datetime.toISOString()}]`
+        }min) [ISO: ${booking.slot_datetime.toISOString()}] [Staff: ${
+          booking.staff_id
+        }] [Service: ${booking.service_id}]`
       );
     });
 

@@ -113,6 +113,9 @@ export async function GET(request: NextRequest) {
     console.log(
       `[AVAILABILITY DEBUG] Checking ${staff.name} availability for ${validDate} (${dayOfWeek}) - timezone-insensitive lookup`
     );
+    console.log(
+      `[API DEBUG] Request params - Staff: ${validStaffId}, Service: ${validServiceId}, Date: ${validDate}, PST Date: ${pstDate.toISOString()}`
+    );
 
     const staffAvailable = await availabilityService.getStaffAvailability(
       validStaffId,
