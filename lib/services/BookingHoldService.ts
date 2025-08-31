@@ -98,7 +98,7 @@ export class BookingHoldService {
 
       // Create holds for ALL required slots in a transaction
       const holds = await this.prisma.$transaction(async (tx) => {
-        const createdHolds = [];
+        const createdHolds: BookingHold[] = [];
         for (const slot of requiredSlots) {
           const hold = await tx.bookingHold.create({
             data: {
@@ -168,7 +168,10 @@ export class BookingHoldService {
         } potential booking conflicts for slot ${format(
           slotDateTime,
           "h:mm a"
-        )} - ${format(slotEndTime, "h:mm a")}`
+        )} - ${format(
+          slotEndTime,
+          "h:mm a"
+        )} (ISO: ${slotDateTime.toISOString()})`
       );
 
       // Check if any booking overlaps with our time slot

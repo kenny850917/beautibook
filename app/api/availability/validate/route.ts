@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BookingHoldService } from "@/lib/services/BookingHoldService";
 import { z } from "zod";
+import { parseISO } from "date-fns";
+import { PrismaService } from "@/lib/services/PrismaService";
 
 const validateRequestSchema = z.object({
   staffId: z.string().min(1, "Staff ID is required"),
@@ -46,8 +48,8 @@ export async function GET(request: NextRequest) {
       datetime: validDatetime,
     } = validation.data;
 
-    // Parse and validate datetime
-    const slotDateTime = new Date(validDatetime);
+    // Parse datetime using parseISO for timezone consistency
+    const slotDateTime = parseISO(validDatetime);
     if (isNaN(slotDateTime.getTime())) {
       return NextResponse.json(
         {
@@ -59,12 +61,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const holdService = BookingHoldService.getInstance();
+    console.log(
+      `[VALIDATION DEBUG] Checking slot availability for ${validDatetime} (parsed as ${slotDateTime.toISOString()})`
+    );
 
-    // Check if the specific slot is available
+    const holdService = BookingHoldService.getInstance();
+    const prisma = PrismaService.getInstance();
+
+    // Get service duration for proper slot validation
+    const service = await prisma.service.findUnique({
+      where: { id: validServiceId },
+      select: { duration_minutes: true },
+    });
+
+    if (!service) {
+      return NextResponse.json(
+        {
+          success: false,
+          available: false,
+          error: "Service not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    // Check if the specific slot is available using the service duration
     const slotAvailability = await holdService.checkSlotAvailability(
       validStaffId,
-      slotDateTime
+      slotDateTime,
+      service.duration_minutes
     );
 
     return NextResponse.json({
