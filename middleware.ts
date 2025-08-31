@@ -46,14 +46,8 @@ export default withAuth(
       }
     }
 
-    if (pathname.startsWith("/api/staff")) {
-      if (!token || (token.role !== "STAFF" && token.role !== "ADMIN")) {
-        return new NextResponse(
-          JSON.stringify({ error: "Staff access required" }),
-          { status: 403, headers: { "content-type": "application/json" } }
-        );
-      }
-    }
+    // Staff API - All public for booking flow
+    // No protection needed - all /api/staff routes are public
 
     return NextResponse.next();
   },
@@ -62,11 +56,16 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        // Allow public routes
+        // Allow all public routes including staff API for booking
         if (
           pathname.startsWith("/api/auth") ||
           pathname.startsWith("/auth") ||
           pathname.startsWith("/booking") ||
+          pathname.startsWith("/api/services") ||
+          pathname.startsWith("/api/availability") ||
+          pathname.startsWith("/api/holds") ||
+          pathname.startsWith("/api/bookings") ||
+          pathname.startsWith("/api/staff") ||
           pathname === "/" ||
           pathname.startsWith("/_next") ||
           pathname.startsWith("/public")
@@ -87,9 +86,9 @@ export const config = {
     "/admin/:path*",
     "/staff/:path*",
     "/api/admin/:path*",
-    "/api/staff/:path*",
     "/api/customers/:path*",
     // Public routes that need auth checking
     "/dashboard/:path*",
+    // Note: /api/staff/* excluded - all public for booking
   ],
 };

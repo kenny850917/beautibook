@@ -13,18 +13,7 @@ export async function GET(request: NextRequest) {
 
     const prisma = PrismaService.getInstance();
 
-    // Base query for staff
-    const whereClause = serviceId
-      ? {
-          services: {
-            has: serviceId, // Staff can perform this service
-          },
-        }
-      : {};
-
-    // Fetch staff members
-    const staff = await prisma.staff.findMany({
-      where: whereClause,
+    const allStaff = await prisma.staff.findMany({
       select: {
         id: true,
         name: true,
@@ -32,37 +21,51 @@ export async function GET(request: NextRequest) {
         photo_url: true,
         services: true,
         created_at: true,
-        // Include custom pricing if filtering by service
-        staffServicePricing: serviceId
-          ? {
-              where: {
-                service_id: serviceId,
-              },
-              select: {
-                custom_price: true,
-              },
-            }
-          : false,
       },
       orderBy: {
-        created_at: "asc", // Senior staff first
+        created_at: "asc",
       },
     });
 
-    // Transform data to include custom pricing
-    const transformedStaff = staff.map((member) => ({
-      id: member.id,
-      name: member.name,
-      bio: member.bio,
-      photo_url: member.photo_url,
-      services: member.services,
-      customPrice: member.staffServicePricing?.[0]?.custom_price || null,
-    }));
+    // Filter staff who can perform this service if serviceId provided
+    const staff = serviceId
+      ? allStaff.filter(
+          (member) => member.services && member.services.includes(serviceId)
+        )
+      : allStaff;
+
+    // Get custom pricing separately for the filtered staff
+    const staffWithPricing = await Promise.all(
+      staff.map(async (member) => {
+        let customPrice = null;
+        if (serviceId) {
+          const pricing = await prisma.staffServicePricing.findFirst({
+            where: {
+              staff_id: member.id,
+              service_id: serviceId,
+            },
+            select: {
+              custom_price: true,
+            },
+          });
+          customPrice = pricing?.custom_price || null;
+        }
+
+        return {
+          id: member.id,
+          name: member.name,
+          bio: member.bio,
+          photo_url: member.photo_url,
+          services: member.services,
+          customPrice,
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
-      staff: transformedStaff,
-      count: transformedStaff.length,
+      staff: staffWithPricing,
+      count: staffWithPricing.length,
       serviceId,
     });
   } catch (error) {

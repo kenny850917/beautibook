@@ -40,61 +40,59 @@ export async function GET(
       );
     }
 
-    // Check authentication - staff can only access their own data
+    // Check if user is authenticated for additional data
     const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    // Staff can only access their own data, admins can access any staff data
-    if (session.user.role !== "ADMIN" && session.user.staffId !== staffId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
+    const isAuthenticated = !!session?.user;
+    const isAuthorized =
+      isAuthenticated &&
+      (session.user.role === "ADMIN" || session.user.staffId === staffId);
 
     const prisma = PrismaService.getInstance();
 
-    // Fetch the specific staff member with pricing overrides and user info
+    // Fetch staff member with conditional data based on authentication
+    const baseSelect = {
+      id: true,
+      user_id: true,
+      name: true,
+      bio: true,
+      photo_url: true,
+      services: true,
+      created_at: true,
+      staffServicePricing: {
+        select: {
+          service_id: true,
+          custom_price: true,
+          service: {
+            select: {
+              id: true,
+              name: true,
+              base_price: true,
+            },
+          },
+        },
+      },
+    };
+
+    const authorizedSelect = {
+      ...baseSelect,
+      user: {
+        select: {
+          email: true,
+          role: true,
+        },
+      },
+      staffAvailability: {
+        select: {
+          id: true,
+        },
+      },
+    };
+
     const staff = await prisma.staff.findUnique({
       where: {
         id: staffId,
       },
-      select: {
-        id: true,
-        user_id: true,
-        name: true,
-        bio: true,
-        photo_url: true,
-        services: true,
-        created_at: true,
-        user: {
-          select: {
-            email: true,
-            role: true,
-          },
-        },
-        staffServicePricing: {
-          select: {
-            service_id: true,
-            custom_price: true,
-            service: {
-              select: {
-                id: true,
-                name: true,
-                base_price: true,
-              },
-            },
-          },
-        },
-        staffAvailability: {
-          select: {
-            id: true,
-          },
-        },
-      },
+      select: isAuthorized ? authorizedSelect : baseSelect,
     });
 
     if (!staff) {
@@ -115,21 +113,29 @@ export async function GET(
       custom_price: pricing.custom_price || undefined,
     }));
 
-    // Create response with formatted staff data matching expected interface
-    const formattedStaff = {
+    // Create response with formatted staff data
+    const formattedStaff: Record<string, unknown> = {
       id: staff.id,
-      user_id: staff.user_id,
       name: staff.name,
       bio: staff.bio,
       photo_url: staff.photo_url,
       services: staff.services,
-      user: {
-        email: staff.user.email,
-        role: staff.user.role,
-      },
       serviceDetails,
-      availabilityCount: staff.staffAvailability.length,
     };
+
+    // Include sensitive data only for authorized users
+    if (isAuthorized && "user" in staff && staff.user) {
+      formattedStaff.user_id = staff.user_id;
+      formattedStaff.user = {
+        email: (staff.user as { email: string; role: string }).email,
+        role: (staff.user as { email: string; role: string }).role,
+      };
+
+      if ("staffAvailability" in staff && staff.staffAvailability) {
+        formattedStaff.availabilityCount =
+          (staff.staffAvailability as { id: string }[]).length || 0;
+      }
+    }
 
     return NextResponse.json({
       success: true,

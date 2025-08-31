@@ -243,7 +243,9 @@ export default function StaffManagementContent() {
   };
 
   const handlePricingChange = (serviceId: string, value: string) => {
-    const numValue = value ? parseInt(value) * 100 : null; // Convert to cents
+    // Handle whole dollar amounts - user types "50" for $50.00
+    const numValue =
+      value && value.trim() ? Math.round(parseFloat(value) * 100) : null;
     setEditForm((prev) => ({
       ...prev,
       servicePricing: {
@@ -669,7 +671,7 @@ export default function StaffManagementContent() {
                             {isSelected && (
                               <div>
                                 <label className="block text-sm text-gray-600 mb-1">
-                                  Custom Price (optional)
+                                  Custom Price (whole dollars only)
                                 </label>
                                 <div className="flex items-center space-x-2">
                                   <span className="text-sm text-gray-500">
@@ -678,10 +680,12 @@ export default function StaffManagementContent() {
                                   <input
                                     type="number"
                                     min="0"
-                                    step="0.01"
+                                    step="1"
                                     value={
                                       customPrice
-                                        ? (customPrice / 100).toFixed(2)
+                                        ? Math.round(
+                                            customPrice / 100
+                                          ).toString()
                                         : ""
                                     }
                                     onChange={(e) =>
@@ -691,9 +695,9 @@ export default function StaffManagementContent() {
                                       )
                                     }
                                     className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                    placeholder={(
+                                    placeholder={`${Math.round(
                                       service.base_price / 100
-                                    ).toFixed(2)}
+                                    )} (base price)`}
                                   />
                                   {customPrice && (
                                     <button
@@ -705,6 +709,10 @@ export default function StaffManagementContent() {
                                       Clear
                                     </button>
                                   )}
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    Enter whole dollars (e.g., type
+                                    &quot;50&quot; for $50.00)
+                                  </div>
                                 </div>
                               </div>
                             )}

@@ -53,7 +53,7 @@ export default function PricingManagementContent() {
   const [createForm, setCreateForm] = useState({
     name: "",
     duration_minutes: 60,
-    base_price: 50,
+    base_price: "" as string | number,
     description: "",
   });
 
@@ -65,7 +65,7 @@ export default function PricingManagementContent() {
   const [editForm, setEditForm] = useState({
     name: "",
     duration_minutes: 60,
-    base_price: 50,
+    base_price: "" as string | number,
     description: "",
   });
 
@@ -139,7 +139,7 @@ export default function PricingManagementContent() {
 
   const handleEditPrice = (serviceId: string, currentPrice: number) => {
     setEditingService(serviceId);
-    setNewPrice((currentPrice / 100).toString());
+    setNewPrice(Math.round(currentPrice / 100).toString());
   };
 
   const handleSavePrice = async (serviceId: string) => {
@@ -192,7 +192,9 @@ export default function PricingManagementContent() {
         body: JSON.stringify({
           name: createForm.name,
           duration_minutes: createForm.duration_minutes,
-          base_price: createForm.base_price * 100, // Convert to cents
+          base_price: Math.round(
+            parseFloat(createForm.base_price.toString()) * 100
+          ), // Convert to cents
           description: createForm.description || undefined,
         }),
       });
@@ -212,7 +214,7 @@ export default function PricingManagementContent() {
         setCreateForm({
           name: "",
           duration_minutes: 60,
-          base_price: 50,
+          base_price: "",
           description: "",
         });
         setIsCreateModalOpen(false);
@@ -238,7 +240,7 @@ export default function PricingManagementContent() {
     setEditForm({
       name: service.name,
       duration_minutes: service.duration_minutes,
-      base_price: service.base_price / 100, // Convert from cents to dollars
+      base_price: Math.round(service.base_price / 100).toString(), // Convert from cents to whole dollars
       description: "", // Note: description not in current schema
     });
     setIsEditModalOpen(true);
@@ -259,7 +261,9 @@ export default function PricingManagementContent() {
           body: JSON.stringify({
             name: editForm.name,
             duration_minutes: editForm.duration_minutes,
-            base_price: editForm.base_price * 100, // Convert to cents
+            base_price: Math.round(
+              parseFloat(editForm.base_price.toString()) * 100
+            ), // Convert to cents
           }),
         }
       );
@@ -418,7 +422,7 @@ export default function PricingManagementContent() {
     setEditingStaffPricing(staffPricing);
     setStaffPricingForm({
       staffId: staffPricing.staff_id,
-      customPrice: (staffPricing.custom_price / 100).toString(),
+      customPrice: Math.round(staffPricing.custom_price / 100).toString(),
     });
   };
 
@@ -792,11 +796,16 @@ export default function PricingManagementContent() {
                       <div className="flex items-center space-x-2">
                         <input
                           type="number"
-                          step="0.01"
+                          step="1"
+                          min="1"
                           value={newPrice}
                           onChange={(e) => setNewPrice(e.target.value)}
                           className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="$"
                         />
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          whole $
+                        </span>
                         <button
                           onClick={() => handleSavePrice(service.id)}
                           className="text-green-600 hover:text-green-800 p-1"
@@ -1063,7 +1072,7 @@ export default function PricingManagementContent() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Price ($) *
+                  Base Price (whole dollars only) *
                 </label>
                 <input
                   type="number"
@@ -1071,13 +1080,18 @@ export default function PricingManagementContent() {
                   onChange={(e) =>
                     setCreateForm((prev) => ({
                       ...prev,
-                      base_price: parseFloat(e.target.value) || 0,
+                      base_price: e.target.value,
                     }))
                   }
                   min="1"
-                  step="0.01"
+                  step="1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter price (e.g., 50 for $50.00)"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter whole dollars only (e.g., type &quot;50&quot; for
+                  $50.00)
+                </p>
               </div>
 
               <div>
@@ -1114,7 +1128,8 @@ export default function PricingManagementContent() {
                   isCreating ||
                   !createForm.name ||
                   createForm.duration_minutes < 15 ||
-                  createForm.base_price <= 0
+                  !createForm.base_price ||
+                  parseFloat(createForm.base_price.toString()) <= 0
                 }
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1195,7 +1210,7 @@ export default function PricingManagementContent() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Price ($) *
+                  Base Price (whole dollars only) *
                 </label>
                 <input
                   type="number"
@@ -1203,13 +1218,18 @@ export default function PricingManagementContent() {
                   onChange={(e) =>
                     setEditForm((prev) => ({
                       ...prev,
-                      base_price: parseFloat(e.target.value) || 0,
+                      base_price: e.target.value,
                     }))
                   }
                   min="1"
-                  step="0.01"
+                  step="1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter price (e.g., 50 for $50.00)"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter whole dollars only (e.g., type &quot;50&quot; for
+                  $50.00)
+                </p>
               </div>
 
               {/* Show staff pricing information */}
@@ -1254,7 +1274,8 @@ export default function PricingManagementContent() {
                   isEditing ||
                   !editForm.name ||
                   editForm.duration_minutes < 15 ||
-                  editForm.base_price <= 0
+                  !editForm.base_price ||
+                  parseFloat(editForm.base_price.toString()) <= 0
                 }
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1365,11 +1386,11 @@ export default function PricingManagementContent() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Custom Price ($)
+                      Custom Price (whole dollars only)
                     </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="1"
                       min="1"
                       value={staffPricingForm.customPrice}
                       onChange={(e) =>
@@ -1379,10 +1400,13 @@ export default function PricingManagementContent() {
                         }))
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder={(
+                      placeholder={`${Math.round(
                         staffPricingService.base_price / 100
-                      ).toFixed(2)}
+                      )} (base price)`}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter whole dollars only (e.g., &quot;75&quot; for $75.00)
+                    </p>
                   </div>
 
                   <div className="flex items-end">

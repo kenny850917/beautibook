@@ -340,7 +340,7 @@ export function BookingSuccessContent() {
         <div className="text-sm text-gray-600 space-y-1">
           <p>BeautiBook Salon</p>
           <p>123 Beauty Street</p>
-          <p>San Francisco, CA 94102</p>
+          <p>Vancouver, BC V1V1V1</p>
           <p className="mt-2">
             <Phone className="w-4 h-4 inline mr-1" />
             (555) 123-4567

@@ -25,57 +25,52 @@ export default async function StaffLayout({ children }: StaffLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile-first staff interface */}
-      <div className="flex flex-col lg:flex-row">
-        {/* Navigation - Mobile bottom, Desktop left */}
-        <StaffNavigation />
+    <div className="fixed inset-0 bg-gray-50 overflow-hidden flex flex-col lg:flex-row">
+      {/* Navigation - Mobile bottom, Desktop left */}
+      <StaffNavigation />
 
-        {/* Main Content Area - Full screen for mobile calendar */}
-        <main className="flex-1 lg:ml-64">
-          {/* Header - Compact for mobile */}
-          <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 sm:px-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Staff Dashboard
-                </h1>
-                <p className="text-sm text-gray-600">
-                  Welcome, {session.user.name || session.user.email}
-                </p>
-              </div>
+      {/* Main Content Area - Full screen for mobile calendar */}
+      <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        {/* Header - Compact for mobile */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 sm:px-6 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                Staff Dashboard
+              </h1>
+              <p className="text-sm text-gray-600">
+                Welcome, {session.user.name || session.user.email}
+              </p>
+            </div>
 
-              {/* Quick Status Toggle */}
-              <div className="flex items-center space-x-3">
-                {/* <div className="flex items-center">
-                  <span className="text-sm text-gray-600 mr-2">Available</span>
-                  <button
-                    type="button"
-                    className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 bg-green-600"
-                    role="switch"
-                    aria-checked="true"
-                  >
-                    <span className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-5"></span>
-                  </button>
-                </div> */}
+            {/* Quick Status Toggle */}
+            <div className="flex items-center space-x-3">
+              {/* <div className="flex items-center">
+                <span className="text-sm text-gray-600 mr-2">Available</span>
+                <button
+                  type="button"
+                  className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 bg-green-600"
+                  role="switch"
+                  aria-checked="true"
+                >
+                  <span className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-5"></span>
+                </button>
+              </div> */}
 
-                {/* Profile Avatar */}
-                <div className="h-8 w-8 bg-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {(session.user.name ||
-                      session.user.email)?.[0]?.toUpperCase()}
-                  </span>
-                </div>
+              {/* Profile Avatar */}
+              <div className="h-8 w-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {(session.user.name ||
+                    session.user.email)?.[0]?.toUpperCase()}
+                </span>
               </div>
             </div>
-          </header>
+          </div>
+        </header>
 
-          {/* Page Content - No padding for full-screen calendar */}
-          <div className="lg:p-6 pb-20 lg:pb-6">{children}</div>
-        </main>
-      </div>
+        {/* Page Content - Flex-1 with proper containment */}
+        <div className="flex-1 min-h-0 overflow-auto lg:p-4">{children}</div>
+      </main>
     </div>
   );
 }
-
-

@@ -74,25 +74,25 @@ export default function StaffNavigation() {
         </svg>
       ),
     },
-    {
-      name: "Profile",
-      href: "/staff/profile",
-      icon: (
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-          />
-        </svg>
-      ),
-    },
+    // {
+    //   name: "Profile",
+    //   href: "/staff/profile",
+    //   icon: (
+    //     <svg
+    //       className="h-5 w-5"
+    //       fill="none"
+    //       stroke="currentColor"
+    //       viewBox="0 0 24 24"
+    //     >
+    //       <path
+    //         strokeLinecap="round"
+    //         strokeLinejoin="round"
+    //         strokeWidth={2}
+    //         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+    //       />
+    //     </svg>
+    //   ),
+    // },
   ];
 
   // Add current state to navigation items
@@ -107,34 +107,16 @@ export default function StaffNavigation() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Fixed width to prevent loading shifts */}
       <div className="hidden lg:flex lg:flex-shrink-0">
-        <div className="flex flex-col w-64">
-          <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
+        <div className="flex flex-col w-64 min-w-[16rem] h-full">
+          <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto min-h-0">
             {/* Logo */}
             <div className="flex items-center flex-shrink-0 px-4">
               <h1 className="text-xl font-bold text-purple-600">
                 BeautiBook Staff
               </h1>
             </div>
-
-            {/* Quick Actions */}
-            <div className="mt-6 px-4">
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-purple-900 mb-2">
-                  Quick Actions
-                </h3>
-                <div className="space-y-2">
-                  <button className="w-full bg-purple-600 text-white px-3 py-2 rounded-md text-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    Mark Unavailable
-                  </button>
-                  <button className="w-full bg-white text-purple-600 border border-purple-600 px-3 py-2 rounded-md text-sm hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    View Today
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* Navigation */}
             <nav className="mt-8 flex-1 px-2 bg-white space-y-1">
               {navigationWithCurrent.map((item) => (
@@ -188,7 +170,7 @@ export default function StaffNavigation() {
       </div>
 
       {/* Mobile Navigation */}
-      <div className="lg:hidden">
+      <div className="lg:hidden flex-shrink-0">
         {/* Mobile menu button */}
         <div className="flex items-center justify-between bg-white px-4 py-2 border-b border-gray-200">
           <h1 className="text-lg font-bold text-purple-600">Staff</h1>
@@ -216,7 +198,7 @@ export default function StaffNavigation() {
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="bg-white border-b border-gray-200">
+          <div className="bg-white border-b border-gray-200 max-h-60 overflow-y-auto">
             <nav className="px-2 pt-2 pb-3 space-y-1">
               {navigationWithCurrent.map((item) => (
                 <Link

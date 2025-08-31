@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
+/* FORCE LIGHT MODE ALWAYS - Ignore system preference */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #ffffff !important;
+  --foreground: #171717 !important;
 }
 
 @theme inline {
@@ -12,12 +13,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Commented out - forcing light mode only
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
 }
+*/
 
 body {
   background: var(--background);

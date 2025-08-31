@@ -99,25 +99,25 @@ export default function AdminNavigation() {
         </svg>
       ),
     },
-    {
-      name: "Analytics",
-      href: "/admin/analytics",
-      icon: (
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          />
-        </svg>
-      ),
-    },
+    // {
+    //   name: "Analytics",
+    //   href: "/admin/analytics",
+    //   icon: (
+    //     <svg
+    //       className="h-5 w-5"
+    //       fill="none"
+    //       stroke="currentColor"
+    //       viewBox="0 0 24 24"
+    //     >
+    //       <path
+    //         strokeLinecap="round"
+    //         strokeLinejoin="round"
+    //         strokeWidth={2}
+    //         d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+    //       />
+    //     </svg>
+    //   ),
+    // },
   ];
 
   // Add current state to navigation items
@@ -132,10 +132,10 @@ export default function AdminNavigation() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Fixed width to prevent loading shifts */}
       <div className="hidden lg:flex lg:flex-shrink-0">
-        <div className="flex flex-col w-64">
-          <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
+        <div className="flex flex-col w-64 min-w-[16rem] h-full">
+          <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto min-h-0">
             {/* Logo */}
             <div className="flex items-center flex-shrink-0 px-4">
               <h1 className="text-xl font-bold text-purple-600">
@@ -196,7 +196,7 @@ export default function AdminNavigation() {
       </div>
 
       {/* Mobile Navigation */}
-      <div className="lg:hidden">
+      <div className="lg:hidden flex-shrink-0">
         {/* Mobile menu button */}
         <div className="flex items-center justify-between bg-white px-4 py-2 border-b border-gray-200">
           <h1 className="text-lg font-bold text-purple-600">Admin</h1>
@@ -224,7 +224,7 @@ export default function AdminNavigation() {
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="bg-white border-b border-gray-200">
+          <div className="bg-white border-b border-gray-200 max-h-60 overflow-y-auto">
             <nav className="px-2 pt-2 pb-3 space-y-1">
               {navigationWithCurrent.map((item) => (
                 <Link

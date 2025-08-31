@@ -349,11 +349,13 @@ Beauty salon booking system with 5-minute hold system, mobile-first design, and 
   - [x] Create service creation modal with name, duration, base price, description
   - [x] Implement service editing functionality for existing services
   - [x] Add service validation (prevent duplicate names, required fields)
-  - [x] Build staff pricing override management (redirects to staff management)
+  - [x] Build comprehensive staff pricing override management (full CRUD modal system)
   - [x] API endpoints for service creation (`POST /api/admin/services`)
   - [x] API endpoints for service editing (`PUT /api/admin/services/[id]`)
   - [x] Real-time service list updates after creation/editing
-
+  - [x] Staff pricing override API endpoints (`POST/PUT/DELETE /api/admin/services/[id]/staff-pricing`)
+  - [x] Staff pricing management modal with add/edit/delete functionality
+  - [x] Real-time staff pricing updates and average price recalculation
 
 ### Guest Appointment Lookup
 

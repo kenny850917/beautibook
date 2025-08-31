@@ -403,23 +403,25 @@ export default function StaffScheduleContent() {
 
   if (isLoading) {
     return (
-      <div className="h-screen lg:h-auto">
-        <div className="lg:hidden h-full bg-white">
-          <div className="p-4 border-b">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="lg:hidden flex-1 bg-white flex flex-col">
+          <div className="p-4 border-b border-gray-200 flex-shrink-0">
             <div className="h-6 bg-gray-200 rounded w-32 mb-2 animate-pulse"></div>
             <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
           </div>
-          <div className="p-4 h-full">
-            <div className="h-96 bg-gray-100 rounded animate-pulse"></div>
+          <div className="p-4 flex-1 overflow-hidden">
+            <div className="h-full bg-gray-100 rounded animate-pulse"></div>
           </div>
         </div>
-        <div className="hidden lg:block space-y-6 p-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="h-6 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="h-96 bg-gray-100 rounded animate-pulse"></div>
+        <div className="hidden lg:block flex-1 overflow-auto p-6">
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="h-6 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="h-96 bg-gray-100 rounded animate-pulse"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -429,7 +431,7 @@ export default function StaffScheduleContent() {
   return (
     <>
       {/* Mobile View - Full Screen Calendar */}
-      <div className="lg:hidden h-screen bg-white">
+      <div className="lg:hidden flex-1 bg-white flex flex-col">
         {/* Mobile Stats Header */}
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -458,7 +460,7 @@ export default function StaffScheduleContent() {
         </div>
 
         {/* Mobile Calendar */}
-        <div className="flex-1 p-2">
+        <div className="flex-1 p-2 overflow-hidden">
           <BaseCalendar
             key={`mobile-calendar-${refreshKey}`}
             events={events}
@@ -474,294 +476,162 @@ export default function StaffScheduleContent() {
             className="h-full"
           />
         </div>
-
-        {/* Mobile Quick Actions */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => setCurrentView("day")}
-              className={`px-3 py-2 rounded-md text-sm font-medium min-h-[44px] ${
-                currentView === "day"
-                  ? "bg-purple-600 text-white"
-                  : "bg-white text-gray-700 border border-gray-300"
-              }`}
-            >
-              Day
-            </button>
-            <button
-              onClick={() => setCurrentView("week")}
-              className={`px-3 py-2 rounded-md text-sm font-medium min-h-[44px] ${
-                currentView === "week"
-                  ? "bg-purple-600 text-white"
-                  : "bg-white text-gray-700 border border-gray-300"
-              }`}
-            >
-              Week
-            </button>
-            <button className="bg-green-600 text-white px-3 py-2 rounded-md text-sm font-medium min-h-[44px]">
-              Available
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Desktop View */}
-      <div className="hidden lg:block space-y-6 p-6">
-        {/* Desktop Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-8 w-8 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Today&apos;s Appointments
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {todayStats.appointments}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-8 w-8 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Today&apos;s Revenue
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {formatCurrency(todayStats.revenue)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-8 w-8 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Working Hours
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {todayStats.hours.toFixed(1)}h
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop Calendar */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">
-                  My Schedule
-                </h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  Personal appointment calendar -{" "}
-                  {format(currentDate, "EEEE, MMMM d, yyyy")}
-                </p>
-              </div>
-              {isLoadingAppointments && (
-                <div className="flex items-center text-sm text-gray-500">
+      <div className="hidden lg:block flex-1 overflow-auto p-6">
+        <div className="space-y-6">
+          {/* Desktop Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
                   <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4"
-                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 text-purple-600"
                     fill="none"
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
-                  Loading appointments...
                 </div>
-              )}
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">
+                    Today&apos;s Appointments
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {todayStats.appointments}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-8 w-8 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">
+                    Today&apos;s Revenue
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {formatCurrency(todayStats.revenue)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-8 w-8 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">
+                    Working Hours
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {todayStats.hours.toFixed(1)}h
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="p-6">
-            <BaseCalendar
-              key={`desktop-calendar-${refreshKey}`}
-              events={events}
-              onSelectEvent={(event) => {
-                // Find the original appointment by ID and convert for modal
-                const appointment = appointments.find((e) => e.id === event.id);
-                if (appointment)
-                  setEditingAppointment(
-                    convertToAppointmentDetails(appointment)
+          {/* Desktop Calendar */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    My Schedule
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Personal appointment calendar -{" "}
+                    {format(currentDate, "EEEE, MMMM d, yyyy")}
+                  </p>
+                </div>
+                {isLoadingAppointments && (
+                  <div className="flex items-center text-sm text-gray-500">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Loading appointments...
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6">
+              <BaseCalendar
+                key={`desktop-calendar-${refreshKey}`}
+                events={events}
+                onSelectEvent={(event) => {
+                  // Find the original appointment by ID and convert for modal
+                  const appointment = appointments.find(
+                    (e) => e.id === event.id
                   );
-              }}
-              onNavigate={setCurrentDate}
-              defaultView="week"
-              views={["month", "week", "day"]}
-              className="h-96 lg:h-[600px]"
-            />
-          </div>
-        </div>
-
-        {/* Upcoming Appointments */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Today */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                Today&apos;s Appointments
-              </h3>
-            </div>
-            <div className="p-6">
-              {getTodayAppointments().length > 0 ? (
-                <div className="space-y-3">
-                  {getTodayAppointments().map((appointment) => (
-                    <div
-                      key={appointment.id}
-                      className="border border-gray-200 rounded-lg p-4"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium text-gray-900">
-                            {appointment.resource.customerName}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {appointment.resource.serviceName}
-                          </p>
-                        </div>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                            appointment.resource.status
-                          )}`}
-                        >
-                          {appointment.resource.status}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        <p>
-                          {format(appointment.start, "h:mm a")} -{" "}
-                          {format(appointment.end, "h:mm a")}
-                        </p>
-                        <p>{formatPhone(appointment.resource.customerPhone)}</p>
-                        <p className="font-medium text-gray-900">
-                          {formatCurrency(appointment.resource.price)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">
-                  No appointments today
-                </p>
-              )}
+                  if (appointment)
+                    setEditingAppointment(
+                      convertToAppointmentDetails(appointment)
+                    );
+                }}
+                onNavigate={setCurrentDate}
+                defaultView="week"
+                views={["month", "week", "day"]}
+                className="h-96 lg:h-[600px]"
+              />
             </div>
           </div>
 
-          {/* Tomorrow */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                Tomorrow&apos;s Appointments
-              </h3>
-            </div>
-            <div className="p-6">
-              {getTomorrowAppointments().length > 0 ? (
-                <div className="space-y-3">
-                  {getTomorrowAppointments().map((appointment) => (
-                    <div
-                      key={appointment.id}
-                      className="border border-gray-200 rounded-lg p-4"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium text-gray-900">
-                            {appointment.resource.customerName}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {appointment.resource.serviceName}
-                          </p>
-                        </div>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                            appointment.resource.status
-                          )}`}
-                        >
-                          {appointment.resource.status}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        <p>
-                          {format(appointment.start, "h:mm a")} -{" "}
-                          {format(appointment.end, "h:mm a")}
-                        </p>
-                        <p>{formatPhone(appointment.resource.customerPhone)}</p>
-                        <p className="font-medium text-gray-900">
-                          {formatCurrency(appointment.resource.price)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">
-                  No appointments tomorrow
-                </p>
-              )}
-            </div>
-          </div>
+          {/* Upcoming Appointments */}
         </div>
       </div>
 
