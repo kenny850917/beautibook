@@ -160,8 +160,8 @@ export function BookingSuccessContent() {
   if (error || !booking) {
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-red-500" />
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-8 h-8 text-green-500" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           Booking Not Found
@@ -171,7 +171,7 @@ export function BookingSuccessContent() {
         </p>
         <button
           onClick={() => router.push("/booking")}
-          className="inline-flex items-center px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
         >
           <Home className="w-4 h-4 mr-2" />
           Book Another Appointment
@@ -305,7 +305,7 @@ export function BookingSuccessContent() {
           </a>
           <button
             onClick={() => router.push("/booking")}
-            className="flex items-center justify-center px-4 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
+            className="flex items-center justify-center px-4 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
           >
             <Home className="w-4 h-4 mr-2" />
             Book Another

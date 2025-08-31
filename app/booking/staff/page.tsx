@@ -20,9 +20,9 @@ export const viewport: Viewport = {
 
 export default function StaffSelectionPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
       {/* Mobile-first header */}
-      <div className="bg-white shadow-sm border-b border-pink-100">
+      <div className="bg-white shadow-sm border-b border-purple-100">
         <div className="px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
@@ -34,7 +34,7 @@ export default function StaffSelectionPage() {
               </p>
             </div>
             <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                 Step 2 of 4
               </span>
             </div>
@@ -50,12 +50,12 @@ export default function StaffSelectionPage() {
       </div>
 
       {/* Mobile progress indicator */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-pink-100 px-4 py-3 sm:hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-purple-100 px-4 py-3 sm:hidden">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">Step 2 of 4</span>
           <div className="flex space-x-1">
-            <div className="w-8 h-1 bg-pink-300 rounded-full"></div>
-            <div className="w-8 h-1 bg-pink-500 rounded-full"></div>
+            <div className="w-8 h-1 bg-purple-300 rounded-full"></div>
+            <div className="w-8 h-1 bg-purple-500 rounded-full"></div>
             <div className="w-8 h-1 bg-gray-200 rounded-full"></div>
             <div className="w-8 h-1 bg-gray-200 rounded-full"></div>
           </div>
@@ -70,7 +70,7 @@ function StaffSelectionSkeleton() {
     <div className="max-w-2xl mx-auto space-y-4">
       {[1, 2, 3].map((i) => (
         <div key={i} className="animate-pulse">
-          <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
             <div className="flex items-start space-x-4">
               <div className="w-16 h-16 bg-gray-200 rounded-full flex-shrink-0"></div>
               <div className="flex-1">

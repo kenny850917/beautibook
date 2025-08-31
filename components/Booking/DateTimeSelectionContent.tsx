@@ -266,7 +266,7 @@ export function DateTimeSelectionContent() {
     return (
       <div className="max-w-4xl mx-auto">
         {/* Loading skeleton for booking context */}
-        <div className="bg-white rounded-lg border border-pink-100 p-4 mb-6">
+        <div className="bg-white rounded-lg border border-purple-100 p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
@@ -278,7 +278,7 @@ export function DateTimeSelectionContent() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Calendar skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
             <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-32"></div>
             <div className="grid grid-cols-7 gap-1 mb-2">
               {Array.from({ length: 7 }).map((_, i) => (
@@ -299,7 +299,7 @@ export function DateTimeSelectionContent() {
           </div>
 
           {/* Time slots skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
             <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-40"></div>
             <div className="grid grid-cols-2 gap-2">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -319,8 +319,8 @@ export function DateTimeSelectionContent() {
   if (!service || !staff) {
     return (
       <div className="max-w-4xl mx-auto text-center py-12">
-        <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Calendar className="w-8 h-8 text-pink-500" />
+        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Calendar className="w-8 h-8 text-purple-500" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           Booking Information Missing
@@ -330,7 +330,7 @@ export function DateTimeSelectionContent() {
         </p>
         <button
           onClick={() => router.push("/booking")}
-          className="inline-flex items-center px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Start Over
@@ -342,7 +342,7 @@ export function DateTimeSelectionContent() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Booking context */}
-      <div className="bg-white rounded-lg border border-pink-100 p-4 mb-6">
+      <div className="bg-white rounded-lg border border-purple-100 p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-medium text-gray-900">{service.name}</h3>
@@ -350,7 +350,7 @@ export function DateTimeSelectionContent() {
           </div>
           <button
             onClick={handleBack}
-            className="flex items-center text-sm text-pink-600 hover:text-pink-700 transition-colors"
+            className="flex items-center text-sm text-purple-600 hover:text-purple-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             Change Staff
@@ -360,7 +360,7 @@ export function DateTimeSelectionContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Calendar */}
-        <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               {format(currentDate, "MMMM yyyy")}
@@ -368,13 +368,13 @@ export function DateTimeSelectionContent() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={previousMonth}
-                className="p-1 rounded-lg hover:bg-pink-50 transition-colors"
+                className="p-1 rounded-lg hover:bg-purple-50 transition-colors"
               >
                 <ChevronLeft className="w-5 h-5 text-gray-400" />
               </button>
               <button
                 onClick={nextMonth}
-                className="p-1 rounded-lg hover:bg-pink-50 transition-colors"
+                className="p-1 rounded-lg hover:bg-purple-50 transition-colors"
               >
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
@@ -414,11 +414,11 @@ export function DateTimeSelectionContent() {
                       !isCurrentMonth
                         ? "text-gray-300 cursor-not-allowed opacity-50"
                         : selected
-                        ? "bg-pink-500 text-white shadow-md"
+                        ? "bg-purple-500 text-white shadow-md"
                         : today
-                        ? "bg-pink-50 text-pink-600 border border-pink-200"
+                        ? "bg-purple-50 text-purple-600 border border-purple-200"
                         : available
-                        ? "hover:bg-pink-50 text-gray-900"
+                        ? "hover:bg-purple-50 text-gray-900"
                         : "text-gray-300 cursor-not-allowed"
                     }
                   `}
@@ -432,9 +432,9 @@ export function DateTimeSelectionContent() {
         </div>
 
         {/* Time slots */}
-        <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <Clock className="w-5 h-5 text-pink-500" />
+            <Clock className="w-5 h-5 text-purple-500" />
             <h3 className="text-lg font-semibold text-gray-900">
               {selectedDate
                 ? format(selectedDate, "EEEE, MMMM d")
@@ -444,8 +444,8 @@ export function DateTimeSelectionContent() {
 
           {!selectedDate ? (
             <div className="text-center py-12">
-              <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Calendar className="w-6 h-6 text-pink-500" />
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Calendar className="w-6 h-6 text-purple-500" />
               </div>
               <p className="text-gray-500 text-sm">
                 Please select a date to see available times
@@ -486,10 +486,10 @@ export function DateTimeSelectionContent() {
                        ${
                          slot.available && !processingTimeSlot
                            ? selectedTime === slot.time
-                             ? "bg-pink-500 text-white shadow-md"
-                             : "bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200"
+                             ? "bg-purple-500 text-white shadow-md"
+                             : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200"
                            : isProcessing
-                           ? "bg-pink-400 text-white cursor-wait"
+                           ? "bg-purple-400 text-white cursor-wait"
                            : "bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-200"
                        }
                      `}
@@ -532,18 +532,18 @@ export function DateTimeSelectionContent() {
 
       {/* Error message */}
       {error && (
-        <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mt-6 bg-rose-50 border border-rose-200 rounded-lg p-4">
           <div className="flex">
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <div className="mt-2 text-sm text-red-700">
+              <h3 className="text-sm font-medium text-rose-700">Error</h3>
+              <div className="mt-2 text-sm text-rose-600">
                 <p>{error}</p>
               </div>
               <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => setError(null)}
-                  className="text-sm bg-red-100 text-red-800 rounded-md px-3 py-2 hover:bg-red-200 transition-colors"
+                  className="text-sm bg-rose-100 text-rose-700 rounded-md px-3 py-2 hover:bg-rose-200 transition-colors"
                 >
                   Dismiss
                 </button>

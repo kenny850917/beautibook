@@ -90,7 +90,7 @@ export function StaffSelectionContent() {
       <div className="max-w-2xl mx-auto space-y-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="animate-pulse">
-            <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
               <div className="flex items-start space-x-4">
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex-shrink-0"></div>
                 <div className="flex-1">
@@ -112,8 +112,8 @@ export function StaffSelectionContent() {
   if (!service) {
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
-        <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-pink-500" />
+        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Users className="w-8 h-8 text-purple-500" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           Service Not Found
@@ -123,7 +123,7 @@ export function StaffSelectionContent() {
         </p>
         <button
           onClick={handleBack}
-          className="inline-flex items-center px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Choose Another Service
@@ -135,7 +135,7 @@ export function StaffSelectionContent() {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Service context */}
-      <div className="bg-white rounded-lg border border-pink-100 p-4 mb-6">
+      <div className="bg-white rounded-lg border border-purple-100 p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-medium text-gray-900">{service.name}</h3>
@@ -145,7 +145,7 @@ export function StaffSelectionContent() {
           </div>
           <button
             onClick={handleBack}
-            className="flex items-center text-sm text-pink-600 hover:text-pink-700 transition-colors"
+            className="flex items-center text-sm text-purple-600 hover:text-purple-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             Change Service
@@ -161,8 +161,8 @@ export function StaffSelectionContent() {
             onClick={() => handleStaffSelect(member.id)}
             className={`w-full bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 p-6 text-left group ${
               selectedStaff === member.id
-                ? "border-pink-300 shadow-md"
-                : "border-pink-100 hover:border-pink-200"
+                ? "border-purple-300 shadow-md"
+                : "border-purple-100 hover:border-purple-200"
             }`}
             style={{ minHeight: "44px" }} // Ensure touch target minimum
           >
@@ -175,11 +175,11 @@ export function StaffSelectionContent() {
                     alt={member.name}
                     width={64}
                     height={64}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-pink-100"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-purple-100"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center border-2 border-pink-100">
-                    <span className="text-xl font-semibold text-pink-600">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-100 flex items-center justify-center border-2 border-purple-100">
+                    <span className="text-xl font-semibold text-purple-600">
                       {member.name.charAt(0)}
                     </span>
                   </div>
@@ -189,7 +189,7 @@ export function StaffSelectionContent() {
               <div className="flex-1 min-w-0">
                 {/* Staff name and rating */}
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-pink-600 transition-colors">
+                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
                     {member.name}
                   </h3>
                   <div className="flex items-center space-x-1">
@@ -213,13 +213,13 @@ export function StaffSelectionContent() {
                     </span>
                     {member.customPrice &&
                       member.customPrice !== service.base_price && (
-                        <span className="text-xs text-pink-600 bg-pink-50 px-2 py-1 rounded">
+                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
                           Special Price
                         </span>
                       )}
                   </div>
 
-                  <ArrowRight className="w-5 h-5 text-pink-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-5 h-5 text-purple-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
                 </div>
               </div>
             </div>
@@ -230,8 +230,8 @@ export function StaffSelectionContent() {
       {/* Empty state */}
       {staff.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-pink-500" />
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Users className="w-8 h-8 text-purple-500" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             No Staff Available
@@ -241,7 +241,7 @@ export function StaffSelectionContent() {
           </p>
           <button
             onClick={handleBack}
-            className="inline-flex items-center px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Choose Another Service
@@ -261,4 +261,3 @@ export function StaffSelectionContent() {
     </div>
   );
 }
-

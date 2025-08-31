@@ -20,9 +20,9 @@ export const viewport: Viewport = {
 
 export default function DateTimeSelectionPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
       {/* Mobile-first header */}
-      <div className="bg-white shadow-sm border-b border-pink-100">
+      <div className="bg-white shadow-sm border-b border-purple-100">
         <div className="px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
@@ -34,7 +34,7 @@ export default function DateTimeSelectionPage() {
               </p>
             </div>
             <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                 Step 3 of 4
               </span>
             </div>
@@ -50,13 +50,13 @@ export default function DateTimeSelectionPage() {
       </div>
 
       {/* Mobile progress indicator */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-pink-100 px-4 py-3 sm:hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-purple-100 px-4 py-3 sm:hidden">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">Step 3 of 4</span>
           <div className="flex space-x-1">
-            <div className="w-8 h-1 bg-pink-300 rounded-full"></div>
-            <div className="w-8 h-1 bg-pink-300 rounded-full"></div>
-            <div className="w-8 h-1 bg-pink-500 rounded-full"></div>
+            <div className="w-8 h-1 bg-purple-300 rounded-full"></div>
+            <div className="w-8 h-1 bg-purple-300 rounded-full"></div>
+            <div className="w-8 h-1 bg-purple-500 rounded-full"></div>
             <div className="w-8 h-1 bg-gray-200 rounded-full"></div>
           </div>
         </div>
@@ -70,7 +70,7 @@ function DateTimeSelectionSkeleton() {
     <div className="max-w-4xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Calendar skeleton */}
-        <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
           <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
           <div className="grid grid-cols-7 gap-1">
             {Array.from({ length: 35 }).map((_, i) => (
@@ -80,7 +80,7 @@ function DateTimeSelectionSkeleton() {
         </div>
 
         {/* Time slots skeleton */}
-        <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
           <div className="h-6 bg-gray-200 rounded w-40 mb-4"></div>
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: 12 }).map((_, i) => (

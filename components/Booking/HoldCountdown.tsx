@@ -66,8 +66,8 @@ export function HoldCountdown({ expiryTime, onExpired }: HoldCountdownProps) {
   // Handle invalid expiry time
   if (!isValidExpiry) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-        <div className="text-center text-red-600">
+      <div className="bg-rose-50 border border-rose-200 rounded-xl p-6">
+        <div className="text-center text-rose-600">
           <Timer className="w-8 h-8 mx-auto mb-2" />
           <p className="font-medium">Hold timer error</p>
           <p className="text-sm">Please refresh and try again</p>
@@ -91,31 +91,33 @@ export function HoldCountdown({ expiryTime, onExpired }: HoldCountdownProps) {
   const getStatusColor = () => {
     if (progress > 50) return "text-green-600 bg-green-50 border-green-200";
     if (progress > 20) return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    return "text-red-600 bg-red-50 border-red-200";
+    return "text-rose-600 bg-rose-50 border-rose-200";
   };
 
   const getProgressColor = () => {
     if (progress > 50) return "bg-green-500";
     if (progress > 20) return "bg-yellow-500";
-    return "bg-red-500";
+    return "bg-rose-400";
   };
 
   const getProgressBackgroundColor = () => {
     if (progress > 50) return "bg-green-100";
     if (progress > 20) return "bg-yellow-100";
-    return "bg-red-100";
+    return "bg-rose-100";
   };
 
   if (timeLeft <= 0) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+      <div className="bg-rose-50 border border-rose-200 rounded-xl p-6">
         <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-6 h-6 text-red-500" />
+          <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-6 h-6 text-rose-500" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-red-900">Hold Expired</h3>
-            <p className="text-sm text-red-700">
+            <h3 className="text-lg font-semibold text-rose-800">
+              Hold Expired
+            </h3>
+            <p className="text-sm text-rose-600">
               Your booking hold has expired. Redirecting you to select a new
               time...
             </p>
@@ -138,7 +140,7 @@ export function HoldCountdown({ expiryTime, onExpired }: HoldCountdownProps) {
                 ? "bg-green-100"
                 : progress > 20
                 ? "bg-yellow-100"
-                : "bg-red-100"
+                : "bg-rose-100"
             }`}
           >
             {/* Circular progress background */}
@@ -180,7 +182,7 @@ export function HoldCountdown({ expiryTime, onExpired }: HoldCountdownProps) {
                   ? "text-green-600"
                   : progress > 20
                   ? "text-yellow-600"
-                  : "text-red-600"
+                  : "text-rose-600"
               }`}
             />
           </div>
@@ -219,10 +221,10 @@ export function HoldCountdown({ expiryTime, onExpired }: HoldCountdownProps) {
 
       {/* Warning message for low time */}
       {progress <= 20 && (
-        <div className="mt-4 p-3 bg-red-100 border border-red-200 rounded-lg">
+        <div className="mt-4 p-3 bg-rose-100 border border-rose-200 rounded-lg">
           <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-            <p className="text-sm text-red-800 font-medium">
+            <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <p className="text-sm text-rose-700 font-medium">
               ⚠️ Your booking will be automatically released in{" "}
               {formatTime(timeLeft)}
             </p>

@@ -76,7 +76,7 @@ export function ServiceSelectionContent() {
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="animate-pulse">
-            <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
               <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
               <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
               <div className="flex justify-between items-center">
@@ -99,15 +99,15 @@ export function ServiceSelectionContent() {
             onClick={() => handleServiceSelect(service.id)}
             className={`w-full bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 p-6 text-left group ${
               selectedService === service.id
-                ? "border-pink-300 shadow-md"
-                : "border-pink-100 hover:border-pink-200"
+                ? "border-purple-300 shadow-md"
+                : "border-purple-100 hover:border-purple-200"
             }`}
             style={{ minHeight: "44px" }} // Ensure touch target minimum
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 {/* Service name */}
-                <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-pink-600 transition-colors">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
                   {service.name}
                 </h3>
 
@@ -130,7 +130,7 @@ export function ServiceSelectionContent() {
                   </div>
 
                   {/* Arrow indicator */}
-                  <ArrowRight className="w-5 h-5 text-pink-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-5 h-5 text-purple-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
                 </div>
               </div>
             </div>
@@ -149,8 +149,8 @@ export function ServiceSelectionContent() {
       {/* Empty state */}
       {!loading && services.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <DollarSign className="w-8 h-8 text-pink-500" />
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <DollarSign className="w-8 h-8 text-purple-500" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             No Services Available
@@ -163,4 +163,3 @@ export function ServiceSelectionContent() {
     </div>
   );
 }
-
