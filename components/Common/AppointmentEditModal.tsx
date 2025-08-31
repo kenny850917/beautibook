@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 interface AppointmentDetails {
   id: string;
@@ -208,8 +209,15 @@ export default function AppointmentEditModal({
                 Edit Appointment
               </h3>
               <p className="text-sm text-gray-600">
-                {format(appointment.start, "EEEE, MMMM d, yyyy")} at{" "}
-                {format(appointment.start, "h:mm a")}
+                {(() => {
+                  const components = parseIsoToPstComponents(
+                    appointment.start.toISOString()
+                  );
+                  const dateObj = new Date(components.date + "T00:00:00");
+                  return `${format(dateObj, "EEEE, MMMM d, yyyy")} at ${
+                    components.display
+                  }`;
+                })()}
               </p>
             </div>
             <button

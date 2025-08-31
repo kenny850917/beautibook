@@ -20,6 +20,7 @@ import {
   Home,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 interface Booking {
   id: string;
@@ -75,10 +76,11 @@ export function BookingSuccessContent() {
   };
 
   const formatDateTime = (datetime: string) => {
-    const date = parseISO(datetime);
+    const components = parseIsoToPstComponents(datetime);
+    const dateObj = parseISO(components.date + "T00:00:00");
     return {
-      date: format(date, "EEEE, MMMM d, yyyy"),
-      time: format(date, "h:mm a"),
+      date: format(dateObj, "EEEE, MMMM d, yyyy"),
+      time: components.display,
     };
   };
 

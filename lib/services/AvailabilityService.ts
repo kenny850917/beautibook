@@ -4,8 +4,9 @@ import { isWithinInterval, parse, format, parseISO } from "date-fns";
 import {
   parseIsoToPstComponents,
   createPstDateTime,
+  PST_TIMEZONE,
 } from "@/lib/utils/calendar";
-// Timezone functions removed - not used in this service
+import { toZonedTime } from "date-fns-tz";
 
 /**
  * Singleton service for staff availability management
@@ -13,6 +14,14 @@ import {
  */
 export class AvailabilityService {
   private static instance: AvailabilityService;
+
+  /**
+   * Format Date object to PST time string for debug logging
+   */
+  private formatPstTime(date: Date): string {
+    const pstDate = toZonedTime(date, PST_TIMEZONE);
+    return format(pstDate, "h:mm a");
+  }
 
   private constructor() {}
 
@@ -317,10 +326,9 @@ export class AvailabilityService {
       `[QUERY DEBUG] Staff ID: ${staffId}, Service ID: ${serviceDurationMinutes}min service, Querying date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`
     );
     console.log(
-      `[ENVIRONMENT DEBUG] Server time: ${new Date().toISOString()}, Date range: ${format(
-        startOfDay,
-        "yyyy-MM-dd HH:mm:ss"
-      )} to ${format(endOfDay, "yyyy-MM-dd HH:mm:ss")}`
+      `[ENVIRONMENT DEBUG] Server time: ${new Date().toISOString()}, Date range: ${this.formatPstTime(
+        startOfDay
+      )} to ${this.formatPstTime(endOfDay)} PST`
     );
     existingBookings.forEach((booking) => {
       const bookingEnd = new Date(
@@ -328,10 +336,9 @@ export class AvailabilityService {
           booking.service.duration_minutes * 60000
       );
       console.log(
-        `[AVAILABILITY DEBUG] Existing booking: ${format(
-          booking.slot_datetime,
-          "h:mm a"
-        )} - ${format(bookingEnd, "h:mm a")} (${
+        `[AVAILABILITY DEBUG] Existing booking: ${this.formatPstTime(
+          booking.slot_datetime
+        )} - ${this.formatPstTime(bookingEnd)} (${
           booking.service.duration_minutes
         }min) [ISO: ${booking.slot_datetime.toISOString()}] [Staff: ${
           booking.staff_id
@@ -369,10 +376,9 @@ export class AvailabilityService {
         hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
       );
       console.log(
-        `[AVAILABILITY DEBUG] Hold: ${hold.id} ${format(
-          hold.slot_datetime,
-          "h:mm a"
-        )} - ${format(holdEnd, "h:mm a")} (${
+        `[AVAILABILITY DEBUG] Hold: ${hold.id} ${this.formatPstTime(
+          hold.slot_datetime
+        )} - ${this.formatPstTime(holdEnd)} (${
           hold.service.duration_minutes
         }min) expires at ${hold.expires_at.toISOString()} (in ${Math.round(
           (hold.expires_at.getTime() - now.getTime()) / 1000
@@ -425,24 +431,26 @@ export class AvailabilityService {
             booking.slot_datetime < slotEndTime && currentSlot < bookingEnd;
 
           console.log(
-            `[BOOKING CHECK] Slot ${format(currentSlot, "h:mm a")} - ${format(
-              slotEndTime,
-              "h:mm a"
-            )} vs Booking ${format(booking.slot_datetime, "h:mm a")} - ${format(
-              bookingEnd,
-              "h:mm a"
-            )}: ${hasOverlap ? "CONFLICT" : "NO CONFLICT"}`
+            `[BOOKING CHECK] Slot ${this.formatPstTime(
+              currentSlot
+            )} - ${this.formatPstTime(
+              slotEndTime
+            )} vs Booking ${this.formatPstTime(
+              booking.slot_datetime
+            )} - ${this.formatPstTime(bookingEnd)}: ${
+              hasOverlap ? "CONFLICT" : "NO CONFLICT"
+            }`
           );
 
           if (hasOverlap) {
             console.log(
-              `[AVAILABILITY CONFLICT] ❌ Booking ${format(
-                booking.slot_datetime,
-                "h:mm a"
-              )} - ${format(bookingEnd, "h:mm a")} conflicts with slot ${format(
-                currentSlot,
-                "h:mm a"
-              )} - ${format(slotEndTime, "h:mm a")}`
+              `[AVAILABILITY CONFLICT] ❌ Booking ${this.formatPstTime(
+                booking.slot_datetime
+              )} - ${this.formatPstTime(
+                bookingEnd
+              )} conflicts with slot ${this.formatPstTime(
+                currentSlot
+              )} - ${this.formatPstTime(slotEndTime)}`
             );
           }
 
@@ -460,24 +468,26 @@ export class AvailabilityService {
             hold.slot_datetime < slotEndTime && currentSlot < holdEnd;
 
           console.log(
-            `[HOLD CHECK] Slot ${format(currentSlot, "h:mm a")} - ${format(
-              slotEndTime,
-              "h:mm a"
-            )} vs Hold ${format(hold.slot_datetime, "h:mm a")} - ${format(
-              holdEnd,
-              "h:mm a"
-            )}: ${hasOverlap ? "CONFLICT" : "NO CONFLICT"}`
+            `[HOLD CHECK] Slot ${this.formatPstTime(
+              currentSlot
+            )} - ${this.formatPstTime(
+              slotEndTime
+            )} vs Hold ${this.formatPstTime(
+              hold.slot_datetime
+            )} - ${this.formatPstTime(holdEnd)}: ${
+              hasOverlap ? "CONFLICT" : "NO CONFLICT"
+            }`
           );
 
           if (hasOverlap) {
             console.log(
-              `[AVAILABILITY CONFLICT] ❌ Hold ${format(
-                hold.slot_datetime,
-                "h:mm a"
-              )} - ${format(holdEnd, "h:mm a")} conflicts with slot ${format(
-                currentSlot,
-                "h:mm a"
-              )} - ${format(slotEndTime, "h:mm a")}`
+              `[AVAILABILITY CONFLICT] ❌ Hold ${this.formatPstTime(
+                hold.slot_datetime
+              )} - ${this.formatPstTime(
+                holdEnd
+              )} conflicts with slot ${this.formatPstTime(
+                currentSlot
+              )} - ${this.formatPstTime(slotEndTime)}`
             );
           }
 

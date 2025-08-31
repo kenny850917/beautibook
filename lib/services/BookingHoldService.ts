@@ -1,6 +1,10 @@
 import { BookingHold, HoldAnalytics } from "@prisma/client";
 import { PrismaService } from "./PrismaService";
 import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
+
+// PST timezone for consistent logging
+const PST_TIMEZONE = "America/Los_Angeles";
 
 /**
  * BookingHoldService - Singleton for 5-minute booking hold system
@@ -12,6 +16,14 @@ export class BookingHoldService {
 
   // In-memory cleanup tracking following backend.mdc simple caching
   private holdTimeouts = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * Format Date object to PST time string for debug logging
+   */
+  private formatPstTime(date: Date): string {
+    const pstDate = toZonedTime(date, PST_TIMEZONE);
+    return format(pstDate, "h:mm a");
+  }
 
   private constructor() {}
 
@@ -69,10 +81,7 @@ export class BookingHoldService {
           requiredSlots.length
         } consecutive slots for ${
           service.duration_minutes
-        }-minute service starting at ${format(
-          slotDateTime,
-          "h:mm a 'on' yyyy-MM-dd"
-        )}`
+        }-minute service starting at ${this.formatPstTime(slotDateTime)} PST`
       );
 
       // Check the FULL service duration at once (like calendar does) instead of individual slots
@@ -165,12 +174,10 @@ export class BookingHoldService {
       console.log(
         `[CONFLICT DEBUG] Found ${
           overlappingBookings.length
-        } potential booking conflicts for slot ${format(
-          slotDateTime,
-          "h:mm a"
-        )} - ${format(
-          slotEndTime,
-          "h:mm a"
+        } potential booking conflicts for slot ${this.formatPstTime(
+          slotDateTime
+        )} - ${this.formatPstTime(
+          slotEndTime
         )} (ISO: ${slotDateTime.toISOString()})`
       );
 
@@ -182,23 +189,21 @@ export class BookingHoldService {
         );
 
         console.log(
-          `[CONFLICT DEBUG] Checking booking: ${format(
-            booking.slot_datetime,
-            "h:mm a"
-          )} - ${format(bookingEndTime, "h:mm a")} (${
+          `[CONFLICT DEBUG] Checking booking: ${this.formatPstTime(
+            booking.slot_datetime
+          )} - ${this.formatPstTime(bookingEndTime)} (${
             booking.service.duration_minutes
           }min)`
         );
 
         // Check for overlap: booking ends after our slot starts
         if (bookingEndTime > slotDateTime) {
-          const bookingStart = format(booking.slot_datetime, "h:mm a");
-          const bookingEnd = format(bookingEndTime, "h:mm a");
+          const bookingStart = this.formatPstTime(booking.slot_datetime);
+          const bookingEnd = this.formatPstTime(bookingEndTime);
           console.log(
-            `[CONFLICT DEBUG] ❌ OVERLAP DETECTED: Booking ${bookingStart} - ${bookingEnd} conflicts with requested ${format(
-              slotDateTime,
-              "h:mm a"
-            )} - ${format(slotEndTime, "h:mm a")}`
+            `[CONFLICT DEBUG] ❌ OVERLAP DETECTED: Booking ${bookingStart} - ${bookingEnd} conflicts with requested ${this.formatPstTime(
+              slotDateTime
+            )} - ${this.formatPstTime(slotEndTime)}`
           );
           return {
             available: false,
@@ -253,8 +258,8 @@ export class BookingHoldService {
 
         // Check for overlap: hold ends after our slot starts
         if (holdEndTime > slotDateTime) {
-          const holdStart = format(hold.slot_datetime, "h:mm a");
-          const holdEnd = format(holdEndTime, "h:mm a");
+          const holdStart = this.formatPstTime(hold.slot_datetime);
+          const holdEnd = this.formatPstTime(holdEndTime);
           return {
             available: false,
             reason: `Slot currently held by another customer (${holdStart} - ${holdEnd})`,

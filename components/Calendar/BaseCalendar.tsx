@@ -201,9 +201,11 @@ export default function BaseCalendar({
   const CustomEvent = useCallback(({ event }: { event: CalendarEvent }) => {
     const eventType = event.resource?.type || "booking";
 
-    // Format time for display
-    const startTime = moment(event.start).format("h:mm A");
-    const endTime = moment(event.end).format("h:mm A");
+    // Format time for display using PST timezone
+    const startComponents = parseIsoToPstComponents(event.start.toISOString());
+    const endComponents = parseIsoToPstComponents(event.end.toISOString());
+    const startTime = startComponents.display;
+    const endTime = endComponents.display;
     const duration = moment(event.end).diff(moment(event.start), "minutes");
 
     return (

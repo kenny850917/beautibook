@@ -1,4 +1,5 @@
 import emailjs from "@emailjs/browser";
+import { parseISO, format } from "date-fns";
 import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 /**
@@ -323,17 +324,12 @@ export class EmailService {
     const components = parseIsoToPstComponents(
       booking.slot_datetime.toISOString()
     );
-    const pstDate = new Date(components.date + "T" + components.time);
+    const dateObj = parseISO(components.date + "T00:00:00");
     const dateTime =
-      pstDate.toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: "America/Los_Angeles", // Explicitly specify PST
-      }) + " PST";
+      format(dateObj, "EEEE, MMMM d, yyyy") +
+      " at " +
+      components.display +
+      " PST";
 
     const duration =
       booking.service.duration_minutes >= 60

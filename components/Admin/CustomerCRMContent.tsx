@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 interface Customer {
@@ -512,11 +512,13 @@ export default function CustomerCRMContent() {
                               const components = parseIsoToPstComponents(
                                 booking.slot_datetime.toISOString()
                               );
-                              const pstDate = new Date(
-                                components.date + "T" + components.time
+                              const dateObj = parseISO(
+                                components.date + "T00:00:00"
                               );
                               return (
-                                format(pstDate, "MMM d, yyyy 'at' h:mm a") +
+                                format(dateObj, "MMM d, yyyy") +
+                                " at " +
+                                components.display +
                                 " PST"
                               );
                             })()}
