@@ -25,17 +25,12 @@ export const PST_TIMEZONE = "America/Los_Angeles";
  * Returns ISO string that works consistently on any server timezone
  */
 export function createPstDateTime(dateStr: string, timeStr: string): string {
-  // Parse components directly to avoid server timezone issues
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const [hour, minute] = timeStr.split(":").map(Number);
-
-  // Create PST date explicitly
-  const pstDate = new Date();
-  pstDate.setFullYear(year, month - 1, day); // month is 0-indexed
-  pstDate.setHours(hour, minute, 0, 0);
-
-  // Convert PST to UTC for universal storage
-  const utcDate = fromZonedTime(pstDate, PST_TIMEZONE);
+  // Parse the date/time into a timezone-naive Date object
+  // This avoids server timezone issues by using date-fns parse
+  const localDate = parse(`${dateStr} ${timeStr}`, "yyyy-MM-dd HH:mm", new Date());
+  
+  // Treat this local time as PST and convert to UTC
+  const utcDate = fromZonedTime(localDate, PST_TIMEZONE);
   return utcDate.toISOString();
 }
 
