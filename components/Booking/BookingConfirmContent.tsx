@@ -138,7 +138,17 @@ export function BookingConfirmContent() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create booking hold");
+        // Parse the actual error message from the server
+        let errorMessage = "Failed to create booking hold";
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -158,9 +168,23 @@ export function BookingConfirmContent() {
       setHoldExpiry(expiryDate);
     } catch (error) {
       console.error("Error creating hold:", error);
-      setError(
-        "This time slot may no longer be available. Please try another time."
-      );
+      // Show the actual server error message instead of generic text
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      setError(errorMessage);
+
+      // If it's a conflict error, redirect back to time selection to refresh availability
+      if (
+        errorMessage.includes("currently held") ||
+        errorMessage.includes("no longer available") ||
+        errorMessage.includes("doesn't have enough consecutive time")
+      ) {
+        setTimeout(() => {
+          router.push(
+            `/booking/datetime?service=${serviceId}&staff=${staffId}`
+          );
+        }, 2000); // Give user time to read the error message
+      }
     }
   };
 

@@ -44,13 +44,21 @@ export class AvailabilityService {
         },
       });
 
+      console.log(
+        `[AVAILABILITY DEBUG] Checking override for date ${format(
+          date,
+          "yyyy-MM-dd"
+        )}:`,
+        override
+      );
+
       if (override) {
         return override;
       }
     }
 
     // Get regular weekly schedule with blocks
-    return await prisma.staffAvailability.findFirst({
+    const regularSchedule = await prisma.staffAvailability.findFirst({
       where: {
         staff_id: staffId,
         day_of_week: dayOfWeek,
@@ -62,6 +70,12 @@ export class AvailabilityService {
         },
       },
     });
+
+    console.log(
+      `[AVAILABILITY DEBUG] Regular schedule for ${dayOfWeek}:`,
+      regularSchedule
+    );
+    return regularSchedule;
   }
 
   /**
@@ -165,6 +179,14 @@ export class AvailabilityService {
       return false;
     }
 
+    // Check if this is a time-off override (00:00 to 00:00 means not available)
+    if (
+      availability.start_time === "00:00" &&
+      availability.end_time === "00:00"
+    ) {
+      return false;
+    }
+
     // Check if the time slot falls within availability hours
     const requestedTime = format(dateTime, "HH:mm");
     const endTime = new Date(dateTime.getTime() + durationMinutes * 60000);
@@ -228,6 +250,27 @@ export class AvailabilityService {
     if (!availability) {
       return [];
     }
+
+    // Check if this is a time-off override (00:00 to 00:00 means not available)
+    if (
+      availability.start_time === "00:00" &&
+      availability.end_time === "00:00"
+    ) {
+      console.log(
+        `[SLOTS DEBUG] Time-off detected for staff ${staffId} on ${format(
+          date,
+          "yyyy-MM-dd"
+        )}`
+      );
+      return [];
+    }
+
+    console.log(
+      `[SLOTS DEBUG] Staff ${staffId} availability on ${format(
+        date,
+        "yyyy-MM-dd"
+      )}: ${availability.start_time} - ${availability.end_time}`
+    );
 
     // Get existing bookings for the day
     const startOfDay = new Date(date);
@@ -297,30 +340,45 @@ export class AvailabilityService {
             );
           });
 
-        // Check for conflicts with existing bookings
+        // Check for conflicts with existing bookings (improved overlap detection)
         const hasBookingConflict = existingBookings.some((booking) => {
           const bookingEnd = new Date(
             booking.slot_datetime.getTime() +
               booking.service.duration_minutes * 60000
           );
+
+          // More comprehensive overlap detection
           return (
+            // Our service starts during an existing booking
             (currentSlot >= booking.slot_datetime &&
               currentSlot < bookingEnd) ||
+            // Our service ends during an existing booking
             (slotEndTime > booking.slot_datetime &&
               slotEndTime <= bookingEnd) ||
-            (currentSlot <= booking.slot_datetime && slotEndTime >= bookingEnd)
+            // Our service completely covers an existing booking
+            (currentSlot <= booking.slot_datetime &&
+              slotEndTime >= bookingEnd) ||
+            // Existing booking completely covers our service
+            (booking.slot_datetime <= currentSlot && bookingEnd >= slotEndTime)
           );
         });
 
-        // Check for conflicts with active holds
+        // Check for conflicts with active holds (improved overlap detection)
         const hasHoldConflict = activeHolds.some((hold) => {
           const holdEnd = new Date(
             hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
           );
+
+          // More comprehensive overlap detection
           return (
+            // Our service starts during an existing hold
             (currentSlot >= hold.slot_datetime && currentSlot < holdEnd) ||
+            // Our service ends during an existing hold
             (slotEndTime > hold.slot_datetime && slotEndTime <= holdEnd) ||
-            (currentSlot <= hold.slot_datetime && slotEndTime >= holdEnd)
+            // Our service completely covers an existing hold
+            (currentSlot <= hold.slot_datetime && slotEndTime >= holdEnd) ||
+            // Existing hold completely covers our service
+            (hold.slot_datetime <= currentSlot && holdEnd >= slotEndTime)
           );
         });
 

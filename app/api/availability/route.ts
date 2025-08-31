@@ -117,13 +117,30 @@ export async function GET(request: NextRequest) {
 
     // Get staff availability for the date
     const dayOfWeek = dateToDayOfWeek(pstDate);
+    console.log(
+      `[AVAILABILITY DEBUG] Checking ${
+        staff.name
+      } availability for ${validDate} (${dayOfWeek}) at ${format(
+        pstDate,
+        "yyyy-MM-dd HH:mm:ss"
+      )}`
+    );
+
     const staffAvailable = await availabilityService.getStaffAvailability(
       validStaffId,
       dayOfWeek,
       pstDate
     );
 
+    console.log(
+      `[AVAILABILITY DEBUG] Staff availability result:`,
+      staffAvailable
+    );
+
     if (!staffAvailable) {
+      console.log(
+        `[AVAILABILITY DEBUG] No availability found for ${staff.name} on ${dayOfWeek}`
+      );
       return NextResponse.json({
         success: true,
         slots: [],
@@ -140,6 +157,11 @@ export async function GET(request: NextRequest) {
       pstDate,
       service.duration_minutes,
       15 // 15-minute intervals
+    );
+
+    console.log(
+      `[AVAILABILITY DEBUG] Generated ${availableSlotTimes.length} available slots for ${staff.name} on ${dayOfWeek}:`,
+      availableSlotTimes
     );
 
     // Convert to frontend format with PST times

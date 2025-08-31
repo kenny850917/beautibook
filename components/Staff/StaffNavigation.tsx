@@ -113,9 +113,12 @@ export default function StaffNavigation() {
           <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto min-h-0">
             {/* Logo */}
             <div className="flex items-center flex-shrink-0 px-4">
-              <h1 className="text-xl font-bold text-purple-600">
+              <Link
+                href="/"
+                className="text-xl font-bold text-purple-600 hover:text-purple-700 transition-colors"
+              >
                 BeautiBook Staff
-              </h1>
+              </Link>
             </div>
             {/* Navigation */}
             <nav className="mt-8 flex-1 px-2 bg-white space-y-1">

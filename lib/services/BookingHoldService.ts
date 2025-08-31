@@ -1,5 +1,6 @@
 import { BookingHold, HoldAnalytics } from "@prisma/client";
 import { PrismaService } from "./PrismaService";
+import { format } from "date-fns";
 
 /**
  * BookingHoldService - Singleton for 5-minute booking hold system
@@ -62,18 +63,34 @@ export class BookingHoldService {
         requiredSlots.push(slotTime);
       }
 
-      // Check if ALL required slots are available (before creating any holds)
-      for (const slot of requiredSlots) {
-        const availability = await this.checkSlotAvailability(staffId, slot);
-        if (!availability.available) {
-          throw new Error(
-            `Service requires ${
-              service.duration_minutes
-            } minutes but slot at ${slot.toISOString()} is not available. ${
-              availability.reason || ""
-            }`
-          );
-        }
+      // Use the SAME validation logic as the calendar to prevent mismatches
+      console.log(
+        `[HOLD DEBUG] Validating ${
+          requiredSlots.length
+        } consecutive slots for ${
+          service.duration_minutes
+        }-minute service starting at ${format(
+          slotDateTime,
+          "h:mm a 'on' yyyy-MM-dd"
+        )}`
+      );
+
+      // Check the FULL service duration at once (like calendar does) instead of individual slots
+      const fullServiceAvailable = await this.checkSlotAvailability(
+        staffId,
+        slotDateTime,
+        service.duration_minutes // Check full 180-minute duration
+      );
+
+      if (!fullServiceAvailable.available) {
+        console.log(
+          `[HOLD DEBUG] Full service duration check failed: ${fullServiceAvailable.reason}`
+        );
+        throw new Error(
+          `This time slot is no longer available. ${
+            fullServiceAvailable.reason || ""
+          }`
+        );
       }
 
       // Create 5-minute expiration time
@@ -120,44 +137,109 @@ export class BookingHoldService {
   }
 
   /**
-   * Check if a time slot is available for booking/holding
+   * Check if a time slot is available for booking/holding (checks for overlapping conflicts)
    */
   async checkSlotAvailability(
     staffId: string,
-    slotDateTime: Date
+    slotDateTime: Date,
+    durationMinutes: number = 15
   ): Promise<{ available: boolean; reason?: string }> {
     try {
-      // Check for existing confirmed booking
-      const existingBooking = await this.prisma.booking.findUnique({
-        where: {
-          staff_id_slot_datetime: {
-            staff_id: staffId,
-            slot_datetime: slotDateTime,
-          },
-        },
-      });
+      const slotEndTime = new Date(
+        slotDateTime.getTime() + durationMinutes * 60000
+      );
 
-      if (existingBooking) {
-        return { available: false, reason: "Slot already booked" };
-      }
-
-      // Check for active holds (not expired)
-      const now = new Date();
-      const activeHold = await this.prisma.bookingHold.findFirst({
+      // Check for overlapping confirmed bookings
+      const overlappingBookings = await this.prisma.booking.findMany({
         where: {
           staff_id: staffId,
-          slot_datetime: slotDateTime,
-          expires_at: {
-            gt: now,
+          slot_datetime: {
+            lt: slotEndTime, // Booking starts before our slot ends
           },
+        },
+        include: {
+          service: { select: { duration_minutes: true } },
         },
       });
 
-      if (activeHold) {
-        return {
-          available: false,
-          reason: "Slot currently held by another customer",
-        };
+      console.log(
+        `[CONFLICT DEBUG] Found ${
+          overlappingBookings.length
+        } potential booking conflicts for slot ${format(
+          slotDateTime,
+          "h:mm a"
+        )} - ${format(slotEndTime, "h:mm a")}`
+      );
+
+      // Check if any booking overlaps with our time slot
+      for (const booking of overlappingBookings) {
+        const bookingEndTime = new Date(
+          booking.slot_datetime.getTime() +
+            booking.service.duration_minutes * 60000
+        );
+
+        console.log(
+          `[CONFLICT DEBUG] Checking booking: ${format(
+            booking.slot_datetime,
+            "h:mm a"
+          )} - ${format(bookingEndTime, "h:mm a")} (${
+            booking.service.duration_minutes
+          }min)`
+        );
+
+        // Check for overlap: booking ends after our slot starts
+        if (bookingEndTime > slotDateTime) {
+          const bookingStart = format(booking.slot_datetime, "h:mm a");
+          const bookingEnd = format(bookingEndTime, "h:mm a");
+          console.log(
+            `[CONFLICT DEBUG] ❌ OVERLAP DETECTED: Booking ${bookingStart} - ${bookingEnd} conflicts with requested ${format(
+              slotDateTime,
+              "h:mm a"
+            )} - ${format(slotEndTime, "h:mm a")}`
+          );
+          return {
+            available: false,
+            reason: `Conflicts with existing booking (${bookingStart} - ${bookingEnd})`,
+          };
+        } else {
+          console.log(
+            `[CONFLICT DEBUG] ✅ No overlap: Booking ends before our slot starts`
+          );
+        }
+      }
+
+      // Check for overlapping active holds (not expired)
+      const now = new Date();
+      const overlappingHolds = await this.prisma.bookingHold.findMany({
+        where: {
+          staff_id: staffId,
+          slot_datetime: {
+            lt: slotEndTime, // Hold starts before our slot ends
+          },
+          expires_at: {
+            gt: now, // Not expired
+          },
+        },
+        include: {
+          service: { select: { duration_minutes: true } },
+        },
+      });
+
+      // Check if any active hold overlaps with our time slot
+      for (const hold of overlappingHolds) {
+        const holdEndTime = new Date(
+          hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
+        );
+
+        // Check for overlap: hold ends after our slot starts
+        if (holdEndTime > slotDateTime) {
+          const holdStart = format(hold.slot_datetime, "h:mm a");
+          const holdEnd = format(holdEndTime, "h:mm a");
+          return {
+            available: false,
+            reason: `Slot currently held by another customer (${holdStart} - ${holdEnd})`,
+          };
+        }
       }
 
       return { available: true };

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getServerSession } from "next-auth";
+import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { ClientProviders } from "./providers";
 import { SignOutButton } from "../components/SignOutButton";
@@ -64,9 +65,12 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                 <div className="flex justify-between items-center h-16">
                   {/* Logo */}
                   <div className="flex items-center">
-                    <h1 className="text-xl font-bold text-purple-600">
+                    <Link
+                      href="/"
+                      className="text-xl font-bold text-purple-600 hover:text-purple-700 transition-colors"
+                    >
                       BeautiBook
-                    </h1>
+                    </Link>
                   </div>
 
                   {/* Desktop Navigation - Hidden on mobile */}

@@ -115,14 +115,44 @@ export async function POST(request: NextRequest) {
 
     // Handle specific error cases following backend.mdc
     if (error instanceof Error) {
+      // Handle constraint violations (P2002 = unique constraint)
+      if (
+        error.message.includes("P2002") ||
+        error.message.includes("Unique constraint")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "This time slot is currently held by another customer. Please select a different time.",
+          },
+          { status: 409 }
+        );
+      }
+
+      // Handle availability conflicts
       if (
         error.message.includes("not available") ||
         error.message.includes("already held") ||
-        error.message.includes("already booked")
+        error.message.includes("already booked") ||
+        error.message.includes("currently held")
       ) {
         return NextResponse.json(
           { error: error.message },
           { status: 409 } // Conflict
+        );
+      }
+
+      // Handle service duration conflicts
+      if (
+        error.message.includes("Service requires") &&
+        error.message.includes("minutes")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "This time slot doesn't have enough consecutive time available for this service. Please select a different time.",
+          },
+          { status: 409 }
         );
       }
     }

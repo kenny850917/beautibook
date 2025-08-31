@@ -14,6 +14,7 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import {
   format,
@@ -103,6 +104,27 @@ export function DateTimeSelectionContent() {
     }
   }, [selectedDate, serviceId, staffId]);
 
+  // Auto-refresh availability every 30 seconds to catch hold changes
+  useEffect(() => {
+    if (!selectedDate || !serviceId || !staffId) return;
+
+    const refreshInterval = setInterval(() => {
+      fetchAvailableSlots();
+    }, 30000); // Refresh every 30 seconds
+
+    // Also refresh when page gains focus (user comes back from another tab)
+    const handleFocus = () => {
+      fetchAvailableSlots();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [selectedDate, serviceId, staffId]);
+
   const fetchServiceAndStaff = async () => {
     try {
       const [serviceResponse, staffResponse] = await Promise.all([
@@ -132,8 +154,16 @@ export function DateTimeSelectionContent() {
     setLoadingSlots(true);
     try {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
+      // Add cache-busting timestamp to prevent stale data
+      const timestamp = Date.now();
       const response = await fetch(
-        `/api/availability?date=${dateStr}&service=${serviceId}&staff=${staffId}`
+        `/api/availability?date=${dateStr}&service=${serviceId}&staff=${staffId}&_t=${timestamp}`,
+        {
+          cache: "no-store", // Prevent caching of availability data
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        }
       );
 
       if (response.ok) {
@@ -433,13 +463,28 @@ export function DateTimeSelectionContent() {
 
         {/* Time slots */}
         <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Clock className="w-5 h-5 text-purple-500" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              {selectedDate
-                ? format(selectedDate, "EEEE, MMMM d")
-                : "Select a date"}
-            </h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-5 h-5 text-purple-500" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedDate
+                  ? format(selectedDate, "EEEE, MMMM d")
+                  : "Select a date"}
+              </h3>
+            </div>
+            {selectedDate && (
+              <button
+                onClick={fetchAvailableSlots}
+                disabled={loadingSlots}
+                className="flex items-center space-x-1 px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Refresh available times"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${loadingSlots ? "animate-spin" : ""}`}
+                />
+                <span>Refresh</span>
+              </button>
+            )}
           </div>
 
           {!selectedDate ? (
