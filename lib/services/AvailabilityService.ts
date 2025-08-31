@@ -23,6 +23,17 @@ export class AvailabilityService {
     return format(pstDate, "h:mm a");
   }
 
+  /**
+   * Convert HH:mm time string to display format (for slot logging)
+   */
+  private formatSlotTime(timeStr: string): string {
+    const [hours, minutes] = timeStr.split(":");
+    const hour24 = parseInt(hours);
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    const ampm = hour24 >= 12 ? "PM" : "AM";
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
   private constructor() {}
 
   /**
@@ -421,10 +432,10 @@ export class AvailabilityService {
           // Only log conflicts, not every check
           if (hasOverlap) {
             console.log(
-              `[BOOKING CONFLICT] ❌ Slot ${this.formatPstTime(
-                currentSlot
-              )} - ${this.formatPstTime(
-                slotEndTime
+              `[BOOKING CONFLICT] ❌ Slot ${this.formatSlotTime(
+                slotTime
+              )} - ${this.formatSlotTime(
+                slotEndTimeStr
               )} conflicts with booking ${this.formatPstTime(
                 booking.slot_datetime
               )} - ${this.formatPstTime(bookingEnd)}`
@@ -447,10 +458,10 @@ export class AvailabilityService {
           // Only log conflicts, not every check
           if (hasOverlap) {
             console.log(
-              `[HOLD CONFLICT] ❌ Slot ${this.formatPstTime(
-                currentSlot
-              )} - ${this.formatPstTime(
-                slotEndTime
+              `[HOLD CONFLICT] ❌ Slot ${this.formatSlotTime(
+                slotTime
+              )} - ${this.formatSlotTime(
+                slotEndTimeStr
               )} conflicts with hold ${this.formatPstTime(
                 hold.slot_datetime
               )} - ${this.formatPstTime(holdEnd)}`
@@ -482,9 +493,9 @@ export class AvailabilityService {
     }
 
     console.log(
-      `[AVAILABILITY SUMMARY] ${dateStr} ${this.formatPstTime(
-        startTime
-      )}-${this.formatPstTime(endTime)}: ${
+      `[AVAILABILITY SUMMARY] ${dateStr} ${this.formatSlotTime(
+        availability.start_time
+      )}-${this.formatSlotTime(availability.end_time)}: ${
         slots.length
       } available slots (filtered ${existingBookings.length} bookings, ${
         activeHolds.length
