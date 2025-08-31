@@ -35,6 +35,9 @@ export class BookingHoldService {
     slotDateTime: Date
   ): Promise<BookingHold> {
     try {
+      // Clean up expired holds first to prevent constraint violations
+      await this.cleanupExpiredHolds();
+
       // Release any existing hold for this session FIRST
       await this.releaseHoldBySession(sessionId);
 
