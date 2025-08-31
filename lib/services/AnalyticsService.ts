@@ -1,5 +1,7 @@
 // Removed unused imports - types are inferred from Prisma operations
 import { PrismaService } from "./PrismaService";
+import { parseISO, format, addDays } from "date-fns";
+import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
 
 interface AnalyticsInsights {
   // Hold Analytics
@@ -514,10 +516,18 @@ export class AnalyticsService {
    * Get real-time dashboard metrics
    */
   async getDashboardMetrics() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Use PST timezone for "today" calculation to ensure consistent dashboard data
+    const todayPstStr = getTodayPst(); // Gets today's date in PST as "YYYY-MM-DD"
+    const tomorrowPstStr = format(
+      addDays(parseISO(todayPstStr + "T00:00:00.000Z"), 1),
+      "yyyy-MM-dd"
+    );
+
+    const todayPstStartIso = createPstDateTime(todayPstStr, "00:00");
+    const tomorrowPstStartIso = createPstDateTime(tomorrowPstStr, "00:00");
+
+    const today = parseISO(todayPstStartIso);
+    const tomorrow = parseISO(tomorrowPstStartIso);
 
     return await this.getAnalyticsInsights({
       startDate: today,

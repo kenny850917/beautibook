@@ -27,8 +27,12 @@ export const PST_TIMEZONE = "America/Los_Angeles";
 export function createPstDateTime(dateStr: string, timeStr: string): string {
   // Parse the date/time into a timezone-naive Date object
   // This avoids server timezone issues by using date-fns parse
-  const localDate = parse(`${dateStr} ${timeStr}`, "yyyy-MM-dd HH:mm", new Date());
-  
+  const localDate = parse(
+    `${dateStr} ${timeStr}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  );
+
   // Treat this local time as PST and convert to UTC
   const utcDate = fromZonedTime(localDate, PST_TIMEZONE);
   return utcDate.toISOString();
@@ -267,4 +271,73 @@ export function getDayName(dayIndex: number): string {
  */
 export function getPstDateForCalendar(date: Date): Date {
   return toZonedTime(date, PST_TIMEZONE);
+}
+
+/**
+ * Format booking time for display (fixes timezone display bugs)
+ */
+export function formatBookingTime(isoString: string): {
+  date: string; // "September 2, 2025"
+  time: string; // "9:00 AM"
+  datetime: string; // "September 2, 2025 at 9:00 AM"
+} {
+  const components = parseIsoToPstComponents(isoString);
+  const dateObj = parseISO(components.date + "T00:00:00");
+
+  return {
+    date: format(dateObj, "MMMM d, yyyy"),
+    time: components.display,
+    datetime: `${format(dateObj, "MMMM d, yyyy")} at ${components.display}`,
+  };
+}
+
+/**
+ * Get PST date for calculations (avoids timezone conversion bugs)
+ */
+export function getPstDateForCalculations(isoString: string): Date {
+  return toZonedTime(parseISO(isoString), PST_TIMEZONE);
+}
+
+/**
+ * Create calendar event from booking with proper PST handling
+ */
+export function createCalendarEvent(booking: {
+  slot_datetime: string | Date;
+  service: { duration_minutes: number };
+  customer_name?: string;
+  id?: string;
+  staff_id?: string;
+  service_id?: string;
+  customer_phone?: string;
+  customer_email?: string | null;
+  final_price?: number;
+  status?: string;
+  notes?: string | null;
+}): {
+  start: Date;
+  end: Date;
+  title: string;
+  id?: string;
+  staff_id?: string;
+  service_id?: string;
+  customer_phone?: string;
+  customer_email?: string | null;
+  final_price?: number;
+  status?: string;
+  notes?: string | null;
+} {
+  const isoString =
+    typeof booking.slot_datetime === "string"
+      ? booking.slot_datetime
+      : booking.slot_datetime.toISOString();
+
+  const pstStart = getPstDateForCalculations(isoString);
+  const pstEnd = addMinutes(pstStart, booking.service.duration_minutes);
+
+  return {
+    start: pstStart,
+    end: pstEnd,
+    title: booking.customer_name || "Booking",
+    ...booking,
+  };
 }

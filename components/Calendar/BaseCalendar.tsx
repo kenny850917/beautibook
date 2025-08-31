@@ -10,7 +10,10 @@ import {
 } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { parseIsoToPstComponents } from "@/lib/utils/calendar";
+import {
+  parseIsoToPstComponents,
+  getPstDateForCalculations,
+} from "@/lib/utils/calendar";
 
 // Setup the localizer for moment
 const localizer = momentLocalizer(moment);
@@ -277,17 +280,9 @@ export default function BaseCalendar({
   // Convert UTC events to PST for display using universal utilities
   const formattedEvents = useMemo(() => {
     return events.map((event) => {
-      // Convert to PST for calendar display using universal utilities
-      const startComponents = parseIsoToPstComponents(
-        event.start.toISOString()
-      );
-      const endComponents = parseIsoToPstComponents(event.end.toISOString());
-
-      // Reconstruct as local dates for React Big Calendar
-      const startPst = new Date(
-        startComponents.date + "T" + startComponents.time
-      );
-      const endPst = new Date(endComponents.date + "T" + endComponents.time);
+      // Use timezone-safe PST date calculations for React Big Calendar
+      const startPst = getPstDateForCalculations(event.start.toISOString());
+      const endPst = getPstDateForCalculations(event.end.toISOString());
 
       return {
         ...event,

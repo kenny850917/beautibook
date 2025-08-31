@@ -1,5 +1,7 @@
 import { prisma } from "./PrismaService";
 import { AvailabilityService } from "./AvailabilityService";
+import { parseISO } from "date-fns";
+import { createPstDateTime } from "@/lib/utils/calendar";
 
 /**
  * Singleton service for booking logic and conflict prevention
@@ -192,11 +194,13 @@ export class BookingService {
    * Get all bookings for a staff member on a specific date
    */
   async getStaffBookingsForDate(staffId: string, date: Date) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Use PST timezone utilities to ensure correct day boundaries
+    const dateStr = date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
+    const pstStartOfDayIso = createPstDateTime(dateStr, "00:00");
+    const pstEndOfDayIso = createPstDateTime(dateStr, "23:59");
 
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = parseISO(pstStartOfDayIso);
+    const endOfDay = parseISO(pstEndOfDayIso);
 
     return await prisma.booking.findMany({
       where: {

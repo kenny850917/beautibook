@@ -32,6 +32,7 @@ import {
   startOfWeek,
   endOfWeek,
 } from "date-fns";
+import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
 
 interface Service {
   id: string;
@@ -288,7 +289,12 @@ export function DateTimeSelectionContent() {
   };
 
   const isDateAvailable = (date: Date) => {
-    return isAfter(date, startOfDay(new Date())) || isSameDay(date, new Date());
+    // Use PST timezone for date availability checking to ensure consistency
+    const todayPstStr = getTodayPst(); // Gets today in PST as "YYYY-MM-DD"
+    const todayPstIso = createPstDateTime(todayPstStr, "00:00");
+    const todayPst = parseISO(todayPstIso);
+
+    return isAfter(date, startOfDay(todayPst)) || isSameDay(date, todayPst);
   };
 
   // Show loading state while fetching service and staff data

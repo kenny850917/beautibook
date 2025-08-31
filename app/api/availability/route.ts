@@ -69,9 +69,10 @@ export async function GET(request: NextRequest) {
       date: validDate,
     } = validationResult.data;
 
-    // Use universal date utilities (server timezone independent)
+    // Use PST timezone handling throughout the pipeline
+    // Don't convert to Date object here - keep as ISO strings for PST-aware processing
     const pstMidnightIso = dateToPstMidnight(validDate);
-    const pstDate = parseISO(pstMidnightIso);
+    const pstEndOfDayIso = createPstDateTime(validDate, "23:59");
 
     // Use singletons following backend.mdc
     const availabilityService = AvailabilityService.getInstance();
@@ -110,6 +111,9 @@ export async function GET(request: NextRequest) {
     // Get staff availability for the date (timezone-insensitive)
     const dayOfWeekStr = utilDayOfWeek(validDate);
     const dayOfWeek = stringToDayOfWeekEnum(dayOfWeekStr);
+    // Create Date object from PST midnight for availability lookup
+    const pstDate = parseISO(pstMidnightIso);
+
     console.log(
       `[AVAILABILITY DEBUG] Checking ${staff.name} availability for ${validDate} (${dayOfWeek}) - timezone-insensitive lookup`
     );
@@ -155,12 +159,11 @@ export async function GET(request: NextRequest) {
       availableSlotTimes
     );
 
-    // Filter out past time slots before converting to frontend format
-    const now = new Date();
+    // Filter out past time slots using PST current time
+    const nowPstIso = new Date().toISOString(); // Current UTC time
     const validSlotTimes = availableSlotTimes.filter((timeStr) => {
-      const datetimeIso = createPstDateTime(validDate, timeStr);
-      const slotDateTime = parseISO(datetimeIso);
-      return slotDateTime > now; // Only future slots
+      const slotDateTimeIso = createPstDateTime(validDate, timeStr);
+      return slotDateTimeIso > nowPstIso; // Compare ISO strings directly
     });
 
     console.log(

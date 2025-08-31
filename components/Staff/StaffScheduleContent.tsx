@@ -5,7 +5,10 @@ import { useSession } from "next-auth/react";
 import BaseCalendar from "@/components/Calendar/BaseCalendar";
 import AppointmentEditModal from "@/components/Common/AppointmentEditModal";
 import { format, isToday, isTomorrow, startOfWeek, endOfWeek } from "date-fns";
-import { parseIsoToPstComponents } from "@/lib/utils/calendar";
+import {
+  parseIsoToPstComponents,
+  createCalendarEvent,
+} from "@/lib/utils/calendar";
 
 interface CalendarEvent {
   id: string;
@@ -182,17 +185,15 @@ export default function StaffScheduleContent() {
         // Transform API data to AppointmentEvent format using timezone-safe parsing
         const realEvents: AppointmentEvent[] = data.appointments.map(
           (appointment: StaffAppointmentData) => {
-            // Parse using universal timezone utilities
-            const startComponents = parseIsoToPstComponents(
-              appointment.slot_datetime
-            );
-            const startTime = new Date(
-              startComponents.date + "T" + startComponents.time
-            );
-            const endTime = new Date(
-              startTime.getTime() +
-                appointment.service.duration_minutes * 60 * 1000
-            );
+            // Use timezone-safe calendar event creation
+            const calendarEvent = createCalendarEvent({
+              slot_datetime: appointment.slot_datetime,
+              service: appointment.service,
+              customer_name: appointment.customer_name,
+            });
+
+            const startTime = calendarEvent.start;
+            const endTime = calendarEvent.end;
 
             // Convert Prisma enum to lowercase for frontend
             const statusMap = {
@@ -255,17 +256,15 @@ export default function StaffScheduleContent() {
         // Transform and calculate today's stats using timezone-safe parsing
         const todayEvents = data.appointments.map(
           (appointment: StaffAppointmentData) => {
-            // Parse using universal timezone utilities
-            const startComponents = parseIsoToPstComponents(
-              appointment.slot_datetime
-            );
-            const startTime = new Date(
-              startComponents.date + "T" + startComponents.time
-            );
-            const endTime = new Date(
-              startTime.getTime() +
-                appointment.service.duration_minutes * 60 * 1000
-            );
+            // Use timezone-safe calendar event creation
+            const calendarEvent = createCalendarEvent({
+              slot_datetime: appointment.slot_datetime,
+              service: appointment.service,
+              customer_name: appointment.customer_name,
+            });
+
+            const startTime = calendarEvent.start;
+            const endTime = calendarEvent.end;
 
             return {
               price: appointment.final_price,

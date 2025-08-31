@@ -1,7 +1,10 @@
 import { prisma } from "./PrismaService";
 import { DayOfWeek } from "@prisma/client";
-import { isWithinInterval, parse, format } from "date-fns";
-import { parseIsoToPstComponents } from "@/lib/utils/calendar";
+import { isWithinInterval, parse, format, parseISO } from "date-fns";
+import {
+  parseIsoToPstComponents,
+  createPstDateTime,
+} from "@/lib/utils/calendar";
 // Timezone functions removed - not used in this service
 
 /**
@@ -277,12 +280,14 @@ export class AvailabilityService {
       )}: ${availability.start_time} - ${availability.end_time}`
     );
 
-    // Get existing bookings for the day
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Get existing bookings for the day using PST boundaries
+    // Use PST timezone utilities to ensure correct day boundaries regardless of server timezone
+    const dateStr = date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
+    const pstStartOfDayIso = createPstDateTime(dateStr, "00:00");
+    const pstEndOfDayIso = createPstDateTime(dateStr, "23:59");
 
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = parseISO(pstStartOfDayIso);
+    const endOfDay = parseISO(pstEndOfDayIso);
 
     console.log(
       `[TIMEZONE DEBUG] Input date: ${date.toISOString()}, Timezone: ${
@@ -335,18 +340,16 @@ export class AvailabilityService {
     });
 
     // Get active holds
-    // Add 30-second buffer to account for serverless timing differences
     const now = new Date();
-    const bufferTime = new Date(now.getTime() + 30 * 1000); // 30 second buffer
     console.log(
-      `[AVAILABILITY DEBUG] Checking holds for staff ${staffId} at ${now.toISOString()} (with 30s buffer: ${bufferTime.toISOString()})`
+      `[AVAILABILITY DEBUG] Checking holds for staff ${staffId} at ${now.toISOString()}`
     );
 
     const activeHolds = await prisma.bookingHold.findMany({
       where: {
         staff_id: staffId,
         expires_at: {
-          gt: bufferTime, // Use buffer time for serverless environments
+          gt: now,
         },
         slot_datetime: {
           gte: startOfDay,

@@ -26,6 +26,8 @@ export function HoldCountdown({ expiryTime, onExpired }: HoldCountdownProps) {
       return;
     }
     const updateCountdown = () => {
+      // Note: Using browser time is correct here for countdown calculations
+      // Both times are converted to UTC milliseconds for timezone-agnostic comparison
       const now = new Date().getTime();
       const expiry = expiryTime.getTime();
 

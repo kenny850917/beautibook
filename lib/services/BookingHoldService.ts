@@ -212,11 +212,9 @@ export class BookingHoldService {
       }
 
       // Check for overlapping active holds (not expired)
-      // Add 30-second buffer to account for serverless timing differences
       const now = new Date();
-      const bufferTime = new Date(now.getTime() + 30 * 1000); // 30 second buffer
       console.log(
-        `[HOLD DEBUG] Checking for conflicts at ${now.toISOString()} (with 30s buffer: ${bufferTime.toISOString()})`
+        `[HOLD DEBUG] Checking for conflicts at ${now.toISOString()}`
       );
 
       const overlappingHolds = await this.prisma.bookingHold.findMany({
@@ -226,7 +224,7 @@ export class BookingHoldService {
             lt: slotEndTime, // Hold starts before our slot ends
           },
           expires_at: {
-            gt: bufferTime, // Not expired (with buffer for serverless timing)
+            gt: now, // Not expired
           },
         },
         include: {
@@ -461,7 +459,7 @@ export class BookingHoldService {
         console.error("Error in hold cleanup:", error);
         this.holdTimeouts.delete(holdId);
       }
-    }, 5 * 60 * 1000 + 30 * 1000); // 5 minutes + 30 second grace period
+    }, 5 * 60 * 1000); // 5 minutes
 
     // Track timeout for manual cleanup if needed
     this.holdTimeouts.set(holdId, timeoutId);

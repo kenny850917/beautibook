@@ -4,7 +4,12 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { PrismaService } from "@/lib/services/PrismaService";
 import { DayOfWeek } from "@prisma/client";
-import { parseIsoToPstComponents } from "@/lib/utils/calendar";
+import {
+  parseIsoToPstComponents,
+  createPstDateTime,
+  getTodayPst,
+} from "@/lib/utils/calendar";
+import { parseISO, format, addDays } from "date-fns";
 
 // Validation schema for staff self-service availability updates with blocks
 const StaffAvailabilitySchema = z.object({
@@ -113,13 +118,25 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Fetch upcoming bookings for context
+    // Fetch upcoming bookings for context using PST timezone
+    const todayPst = getTodayPst();
+    const thirtyDaysFromNowPst = format(
+      addDays(parseISO(todayPst + "T00:00:00.000Z"), 30),
+      "yyyy-MM-dd"
+    );
+
+    const todayPstIso = createPstDateTime(todayPst, "00:00");
+    const thirtyDaysFromNowPstIso = createPstDateTime(
+      thirtyDaysFromNowPst,
+      "23:59"
+    );
+
     const upcomingBookings = await prisma.booking.findMany({
       where: {
         staff_id: staff.id,
         slot_datetime: {
-          gte: new Date(),
-          lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Next 30 days
+          gte: parseISO(todayPstIso),
+          lte: parseISO(thirtyDaysFromNowPstIso),
         },
       },
       include: {
@@ -330,13 +347,15 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Check for conflicts with existing bookings
-    const now = new Date();
+    // Check for conflicts with existing bookings using PST timezone
+    const nowPst = getTodayPst();
+    const nowPstIso = createPstDateTime(nowPst, "00:00");
+
     const futureBookings = await prisma.booking.findMany({
       where: {
         staff_id: staff.id,
         slot_datetime: {
-          gte: now,
+          gte: parseISO(nowPstIso),
         },
       },
       select: {
@@ -437,12 +456,16 @@ export async function PUT(request: NextRequest) {
         }
       }
 
-      // Handle time off request
+      // Handle time off request using PST timezone
       if (timeOffRequest && conflicts.length === 0) {
-        const startDate = new Date(
-          timeOffRequest.start_date + "T00:00:00.000Z"
+        const startDateIso = createPstDateTime(
+          timeOffRequest.start_date,
+          "00:00"
         );
-        const endDate = new Date(timeOffRequest.end_date + "T00:00:00.000Z");
+        const endDateIso = createPstDateTime(timeOffRequest.end_date, "00:00");
+
+        const startDate = parseISO(startDateIso);
+        const endDate = parseISO(endDateIso);
 
         // Create time off entries for each day in the range
         const timeOffDays: Date[] = [];
