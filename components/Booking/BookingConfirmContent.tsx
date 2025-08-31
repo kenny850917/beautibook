@@ -17,6 +17,7 @@ import {
   Timer,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 import { HoldCountdown } from "./HoldCountdown";
 
 interface Service {
@@ -289,8 +290,9 @@ export function BookingConfirmContent() {
   };
 
   const formatDateTime = (datetime: string) => {
+    const components = parseIsoToPstComponents(datetime);
     const date = parseISO(datetime);
-    return format(date, "EEEE, MMMM d 'at' h:mm a");
+    return format(date, "EEEE, MMMM d") + " at " + components.display;
   };
 
   const formatPrice = (priceInCents: number) => {

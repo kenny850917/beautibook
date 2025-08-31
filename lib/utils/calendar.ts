@@ -9,12 +9,84 @@ import {
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 /**
- * Calendar utilities for BeautiBook booking system
- * Handles PST timezone conversion and 15-minute slot generation
+ * Universal timezone utilities for BeautiBook
+ * Provides consistent date/time handling across localhost and Vercel
  */
 
 // PST timezone identifier
 export const PST_TIMEZONE = "America/Los_Angeles";
+
+/**
+ * UNIVERSAL DATE HELPERS - Server timezone independent
+ */
+
+/**
+ * Create a PST date from date string (yyyy-MM-dd) + time string (HH:mm)
+ * Returns ISO string that works consistently on any server timezone
+ */
+export function createPstDateTime(dateStr: string, timeStr: string): string {
+  // Parse components directly to avoid server timezone issues
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = timeStr.split(":").map(Number);
+
+  // Create PST date explicitly
+  const pstDate = new Date();
+  pstDate.setFullYear(year, month - 1, day); // month is 0-indexed
+  pstDate.setHours(hour, minute, 0, 0);
+
+  // Convert PST to UTC for universal storage
+  const utcDate = fromZonedTime(pstDate, PST_TIMEZONE);
+  return utcDate.toISOString();
+}
+
+/**
+ * Parse date string (yyyy-MM-dd) to PST midnight as ISO string
+ * Server timezone independent
+ */
+export function dateToPstMidnight(dateStr: string): string {
+  return createPstDateTime(dateStr, "00:00");
+}
+
+/**
+ * Convert ISO string to PST date components for display
+ * Always returns PST times regardless of server timezone
+ */
+export function parseIsoToPstComponents(isoString: string): {
+  date: string; // "2024-01-08"
+  time: string; // "09:00"
+  display: string; // "9:00 AM"
+  dayOfWeek: number; // 0=Sunday, 1=Monday...
+} {
+  const utcDate = parseISO(isoString);
+  const pstDate = toZonedTime(utcDate, PST_TIMEZONE);
+
+  return {
+    date: format(pstDate, "yyyy-MM-dd"),
+    time: format(pstDate, "HH:mm"),
+    display: format(pstDate, "h:mm a"),
+    dayOfWeek: pstDate.getDay(),
+  };
+}
+
+/**
+ * Get day of week from date string (server timezone independent)
+ * Returns DayOfWeek enum value
+ */
+export function dateStringToDayOfWeek(dateStr: string): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const localDate = new Date(year, month - 1, day);
+
+  const dayMap = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ];
+  return dayMap[localDate.getDay()];
+}
 
 // Business hours for BeautiBook (9 AM to 6 PM PST)
 export const BUSINESS_HOURS = {

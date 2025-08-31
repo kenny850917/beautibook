@@ -2,30 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AvailabilityService } from "@/lib/services/AvailabilityService";
 import { PrismaService } from "@/lib/services/PrismaService";
-import { format, parseISO, getDay } from "date-fns";
-import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { parseISO } from "date-fns";
 import { DayOfWeek } from "@prisma/client";
+import {
+  createPstDateTime,
+  dateToPstMidnight,
+  dateStringToDayOfWeek as utilDayOfWeek,
+  parseIsoToPstComponents,
+} from "@/lib/utils/calendar";
 
-// PST timezone constant following frontend.mdc
-const PST_TIMEZONE = "America/Los_Angeles";
-
-// Convert date string directly to DayOfWeek enum (timezone-insensitive)
-function dateStringToDayOfWeek(dateStr: string): DayOfWeek {
-  // Parse as local date to avoid timezone shifts
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const localDate = new Date(year, month - 1, day); // month is 0-indexed
-
-  const dayNumber = localDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const dayMap: DayOfWeek[] = [
-    DayOfWeek.SUNDAY,
-    DayOfWeek.MONDAY,
-    DayOfWeek.TUESDAY,
-    DayOfWeek.WEDNESDAY,
-    DayOfWeek.THURSDAY,
-    DayOfWeek.FRIDAY,
-    DayOfWeek.SATURDAY,
-  ];
-  return dayMap[dayNumber];
+// Convert day string to Prisma enum
+function stringToDayOfWeekEnum(dayStr: string): DayOfWeek {
+  return DayOfWeek[dayStr as keyof typeof DayOfWeek];
 }
 
 // Validation schema following backend.mdc Zod patterns
@@ -81,9 +69,9 @@ export async function GET(request: NextRequest) {
       date: validDate,
     } = validationResult.data;
 
-    // Parse date and convert to PST following frontend.mdc timezone handling
-    const requestDate = parseISO(validDate);
-    const pstDate = toZonedTime(requestDate, PST_TIMEZONE);
+    // Use universal date utilities (server timezone independent)
+    const pstMidnightIso = dateToPstMidnight(validDate);
+    const pstDate = parseISO(pstMidnightIso);
 
     // Use singletons following backend.mdc
     const availabilityService = AvailabilityService.getInstance();
@@ -120,7 +108,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get staff availability for the date (timezone-insensitive)
-    const dayOfWeek = dateStringToDayOfWeek(validDate);
+    const dayOfWeekStr = utilDayOfWeek(validDate);
+    const dayOfWeek = stringToDayOfWeekEnum(dayOfWeekStr);
     console.log(
       `[AVAILABILITY DEBUG] Checking ${staff.name} availability for ${validDate} (${dayOfWeek}) - timezone-insensitive lookup`
     );
@@ -163,19 +152,15 @@ export async function GET(request: NextRequest) {
       availableSlotTimes
     );
 
-    // Convert to frontend format with PST times (keep original time handling)
+    // Convert to frontend format with universal PST times
     const timeSlots: TimeSlot[] = availableSlotTimes.map((timeStr) => {
-      // Parse the time string (e.g., "09:00") and create PST date
-      const [hour, minute] = timeStr.split(":").map(Number);
-      const pstSlotTime = new Date(pstDate);
-      pstSlotTime.setHours(hour, minute, 0, 0);
-
-      // Convert to UTC for storage
-      const utcSlotTime = fromZonedTime(pstSlotTime, PST_TIMEZONE);
+      // Use universal timezone utility to create consistent PST datetime
+      const datetimeIso = createPstDateTime(validDate, timeStr);
+      const components = parseIsoToPstComponents(datetimeIso);
 
       return {
-        time: format(pstSlotTime, "h:mm a"), // PST formatted for display
-        datetime: utcSlotTime.toISOString(),
+        time: components.display, // PST formatted display (e.g., "9:00 AM")
+        datetime: datetimeIso, // Universal ISO string
         available: true, // These are already filtered as available
       };
     });
