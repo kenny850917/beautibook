@@ -435,8 +435,10 @@ export async function PUT(request: NextRequest) {
 
       // Handle time off request
       if (timeOffRequest && conflicts.length === 0) {
-        const startDate = new Date(timeOffRequest.start_date);
-        const endDate = new Date(timeOffRequest.end_date);
+        const startDate = new Date(
+          timeOffRequest.start_date + "T00:00:00.000Z"
+        );
+        const endDate = new Date(timeOffRequest.end_date + "T00:00:00.000Z");
 
         // Create time off entries for each day in the range
         const timeOffDays: Date[] = [];

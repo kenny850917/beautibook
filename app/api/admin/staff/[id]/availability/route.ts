@@ -446,7 +446,9 @@ export async function PUT(
             await tx.staffAvailability.update({
               where: { id: override.id },
               data: {
-                override_date: new Date(override.override_date),
+                override_date: new Date(
+                  override.override_date + "T00:00:00.000Z"
+                ),
                 start_time: override.is_available
                   ? override.start_time!
                   : "00:00",
@@ -464,7 +466,9 @@ export async function PUT(
                   ? override.start_time!
                   : "00:00",
                 end_time: override.is_available ? override.end_time! : "00:00",
-                override_date: new Date(override.override_date),
+                override_date: new Date(
+                  override.override_date + "T00:00:00.000Z"
+                ),
               },
             });
           }
