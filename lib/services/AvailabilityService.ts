@@ -396,9 +396,15 @@ export class AvailabilityService {
   }
 
   /**
-   * Get day of week enum from Date object
+   * Get day of week enum from Date object (timezone-insensitive)
    */
   private getDayOfWeekFromDate(date: Date): DayOfWeek {
+    // Use the local date components to avoid timezone shifts
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    const localDate = new Date(year, month, day);
+
     const dayMap = {
       0: DayOfWeek.SUNDAY,
       1: DayOfWeek.MONDAY,
@@ -409,7 +415,7 @@ export class AvailabilityService {
       6: DayOfWeek.SATURDAY,
     };
 
-    return dayMap[date.getDay() as keyof typeof dayMap];
+    return dayMap[localDate.getDay() as keyof typeof dayMap];
   }
 
   /**

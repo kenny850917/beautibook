@@ -9,9 +9,13 @@ import { DayOfWeek } from "@prisma/client";
 // PST timezone constant following frontend.mdc
 const PST_TIMEZONE = "America/Los_Angeles";
 
-// Convert Date to DayOfWeek enum
-function dateToDayOfWeek(date: Date): DayOfWeek {
-  const dayNumber = getDay(date); // 0 = Sunday, 1 = Monday, etc.
+// Convert date string directly to DayOfWeek enum (timezone-insensitive)
+function dateStringToDayOfWeek(dateStr: string): DayOfWeek {
+  // Parse as local date to avoid timezone shifts
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const localDate = new Date(year, month - 1, day); // month is 0-indexed
+
+  const dayNumber = localDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const dayMap: DayOfWeek[] = [
     DayOfWeek.SUNDAY,
     DayOfWeek.MONDAY,
@@ -115,21 +119,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get staff availability for the date
-    const dayOfWeek = dateToDayOfWeek(pstDate);
+    // Get staff availability for the date (timezone-insensitive)
+    const dayOfWeek = dateStringToDayOfWeek(validDate);
     console.log(
-      `[AVAILABILITY DEBUG] Checking ${
-        staff.name
-      } availability for ${validDate} (${dayOfWeek}) at ${format(
-        pstDate,
-        "yyyy-MM-dd HH:mm:ss"
-      )}`
+      `[AVAILABILITY DEBUG] Checking ${staff.name} availability for ${validDate} (${dayOfWeek}) - timezone-insensitive lookup`
     );
+
+    // Create timezone-insensitive date for override checks
+    const [year, month, day] = validDate.split("-").map(Number);
+    const overrideDate = new Date(year, month - 1, day); // Local date without timezone conversion
 
     const staffAvailable = await availabilityService.getStaffAvailability(
       validStaffId,
       dayOfWeek,
-      pstDate
+      overrideDate
     );
 
     console.log(
@@ -154,7 +157,7 @@ export async function GET(request: NextRequest) {
     // Use the updated AvailabilityService which factors in schedule blocks
     const availableSlotTimes = await availabilityService.getAvailableSlots(
       validStaffId,
-      pstDate,
+      overrideDate, // Use timezone-insensitive date
       service.duration_minutes,
       15 // 15-minute intervals
     );
@@ -164,18 +167,18 @@ export async function GET(request: NextRequest) {
       availableSlotTimes
     );
 
-    // Convert to frontend format with PST times
+    // Convert to frontend format with local times (timezone-insensitive)
     const timeSlots: TimeSlot[] = availableSlotTimes.map((timeStr) => {
-      // Parse the time string (e.g., "09:00") and create PST date
+      // Parse the time string (e.g., "09:00") and create local date
       const [hour, minute] = timeStr.split(":").map(Number);
-      const pstSlotTime = new Date(pstDate);
-      pstSlotTime.setHours(hour, minute, 0, 0);
+      const localSlotTime = new Date(overrideDate);
+      localSlotTime.setHours(hour, minute, 0, 0);
 
-      // Convert to UTC for storage
-      const utcSlotTime = fromZonedTime(pstSlotTime, PST_TIMEZONE);
+      // For storage, we'll keep it simple and just use the local time as UTC
+      const utcSlotTime = new Date(localSlotTime);
 
       return {
-        time: format(pstSlotTime, "h:mm a"), // PST formatted for display
+        time: format(localSlotTime, "h:mm a"), // Local time formatted for display
         datetime: utcSlotTime.toISOString(),
         available: true, // These are already filtered as available
       };
