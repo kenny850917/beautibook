@@ -152,8 +152,22 @@ export async function GET(request: NextRequest) {
       availableSlotTimes
     );
 
+    // Filter out past time slots before converting to frontend format
+    const now = new Date();
+    const validSlotTimes = availableSlotTimes.filter((timeStr) => {
+      const datetimeIso = createPstDateTime(validDate, timeStr);
+      const slotDateTime = parseISO(datetimeIso);
+      return slotDateTime > now; // Only future slots
+    });
+
+    console.log(
+      `[AVAILABILITY DEBUG] Filtered ${
+        availableSlotTimes.length - validSlotTimes.length
+      } past slots. Remaining: ${validSlotTimes.length}`
+    );
+
     // Convert to frontend format with universal PST times
-    const timeSlots: TimeSlot[] = availableSlotTimes.map((timeStr) => {
+    const timeSlots: TimeSlot[] = validSlotTimes.map((timeStr) => {
       // Use universal timezone utility to create consistent PST datetime
       const datetimeIso = createPstDateTime(validDate, timeStr);
       const components = parseIsoToPstComponents(datetimeIso);
