@@ -12,6 +12,7 @@ import {
   endOfWeek,
   startOfMonth,
   endOfMonth,
+  subWeeks,
 } from "date-fns";
 
 export async function GET(request: NextRequest) {
@@ -145,11 +146,9 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Calculate growth rates (compare to previous periods)
-    const prevWeekStart = new Date(
-      weekStart.getTime() - 7 * 24 * 60 * 60 * 1000
-    );
-    const prevWeekEnd = new Date(weekEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // ✅ UTC NORMALIZATION: Calculate growth rates using proper date utilities
+    const prevWeekStart = subWeeks(weekStart, 1);
+    const prevWeekEnd = subWeeks(weekEnd, 1);
 
     const [prevWeekBookings, prevWeekRevenue] = await Promise.all([
       prisma.booking.count({
@@ -237,4 +236,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

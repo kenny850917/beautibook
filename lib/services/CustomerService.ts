@@ -1,5 +1,7 @@
 import { Booking } from "@prisma/client";
 import { PrismaService } from "./PrismaService";
+import { subDays } from "date-fns";
+import { getCurrentUtcTime } from "@/lib/utils/calendar";
 
 // Temporary Customer interface until Prisma client regeneration
 interface Customer {
@@ -383,16 +385,14 @@ export class CustomerService {
         };
         break;
       case "new":
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = subDays(getCurrentUtcTime(), 7);
         filterWhere = {
           created_at: { gte: sevenDaysAgo },
           total_bookings: { lt: 5 },
         };
         break;
       case "inactive":
-        const thirtyDaysAgo = new Date(
-          now.getTime() - 30 * 24 * 60 * 60 * 1000
-        );
+        const thirtyDaysAgo = subDays(getCurrentUtcTime(), 30);
         filterWhere = {
           last_booking_at: { lt: thirtyDaysAgo },
         };
@@ -455,16 +455,14 @@ export class CustomerService {
         };
         break;
       case "new":
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = subDays(getCurrentUtcTime(), 7);
         filterWhere = {
           created_at: { gte: sevenDaysAgo },
           total_bookings: { lt: 5 },
         };
         break;
       case "inactive":
-        const thirtyDaysAgo = new Date(
-          now.getTime() - 30 * 24 * 60 * 60 * 1000
-        );
+        const thirtyDaysAgo = subDays(getCurrentUtcTime(), 30);
         filterWhere = {
           last_booking_at: { lt: thirtyDaysAgo },
         };

@@ -1,6 +1,12 @@
 import { prisma } from "./PrismaService";
 import { DayOfWeek } from "@prisma/client";
-import { isWithinInterval, parse, format, parseISO } from "date-fns";
+import {
+  isWithinInterval,
+  parse,
+  format,
+  parseISO,
+  addMinutes,
+} from "date-fns";
 import {
   parseIsoToPstComponents,
   createPstDateTime,
@@ -9,7 +15,7 @@ import {
   getCurrentUtcTime,
   createUtcDateRange,
 } from "@/lib/utils/calendar";
-import { toZonedTime } from "date-fns-tz";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 /**
  * Singleton service for staff availability management
@@ -391,9 +397,7 @@ export class AvailabilityService {
     let currentSlot = startTime;
 
     while (currentSlot < endTime) {
-      const slotEndTime = new Date(
-        currentSlot.getTime() + serviceDurationMinutes * 60000
-      );
+      const slotEndTime = addMinutes(currentSlot, serviceDurationMinutes);
 
       // Check if slot end time is within availability
       if (slotEndTime <= endTime) {
@@ -421,12 +425,16 @@ export class AvailabilityService {
               booking.service.duration_minutes * 60000
           );
 
-          // Use standardized UTC-aware overlap detection
+          // ✅ PROPER FIX: Convert PST slot times to UTC using timezone utilities
+          const slotStartUtc = fromZonedTime(currentSlot, PST_TIMEZONE); // PST to UTC (handles DST)
+          const slotEndUtc = fromZonedTime(slotEndTime, PST_TIMEZONE); // PST to UTC (handles DST)
+
+          // Use standardized UTC-aware overlap detection (all UTC now)
           const hasOverlap = checkTimeOverlap(
             booking.slot_datetime, // Booking start (UTC)
             bookingEnd, // Booking end (UTC)
-            currentSlot, // Slot start (UTC)
-            slotEndTime // Slot end (UTC)
+            slotStartUtc, // Slot start (UTC - converted)
+            slotEndUtc // Slot end (UTC - converted)
           );
 
           // Only log conflicts, not every check
@@ -447,16 +455,21 @@ export class AvailabilityService {
 
         // ✅ UTC NORMALIZATION: Use standardized overlap detection
         const hasHoldConflict = activeHolds.some((hold) => {
-          const holdEnd = new Date(
-            hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
+          const holdEnd = addMinutes(
+            hold.slot_datetime,
+            hold.service.duration_minutes
           );
 
-          // Use standardized UTC-aware overlap detection
+          // ✅ PROPER FIX: Convert PST slot times to UTC using timezone utilities
+          const slotStartUtc = fromZonedTime(currentSlot, PST_TIMEZONE); // PST to UTC (handles DST)
+          const slotEndUtc = fromZonedTime(slotEndTime, PST_TIMEZONE); // PST to UTC (handles DST)
+
+          // Use standardized UTC-aware overlap detection (all UTC now)
           const hasOverlap = checkTimeOverlap(
             hold.slot_datetime, // Hold start (UTC)
             holdEnd, // Hold end (UTC)
-            currentSlot, // Slot start (UTC)
-            slotEndTime // Slot end (UTC)
+            slotStartUtc, // Slot start (UTC - converted)
+            slotEndUtc // Slot end (UTC - converted)
           );
 
           // Only log conflicts, not every check
@@ -491,9 +504,7 @@ export class AvailabilityService {
         }
       }
 
-      currentSlot = new Date(
-        currentSlot.getTime() + slotIntervalMinutes * 60000
-      );
+      currentSlot = addMinutes(currentSlot, slotIntervalMinutes);
     }
 
     console.log(

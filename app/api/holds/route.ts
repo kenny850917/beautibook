@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { BookingHoldService } from "@/lib/services/BookingHoldService";
+import { getCurrentUtcTime } from "@/lib/utils/calendar";
 import { AnalyticsService } from "@/lib/services/AnalyticsService";
 import { parseISO } from "date-fns";
 import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
@@ -86,8 +87,8 @@ export async function POST(request: NextRequest) {
         console.error("Analytics tracking failed:", error);
       });
 
-    // Calculate remaining time for countdown
-    const now = new Date();
+    // ✅ UTC NORMALIZATION: Calculate remaining time for countdown using UTC utilities
+    const now = getCurrentUtcTime();
     const remainingTime = Math.max(
       0,
       hold.expires_at.getTime() - now.getTime()
@@ -257,8 +258,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate remaining time for countdown
-    const now = new Date();
+    // ✅ UTC NORMALIZATION: Calculate remaining time for countdown using UTC utilities
+    const now = getCurrentUtcTime();
     const remainingTime = Math.max(
       0,
       activeHold.expires_at.getTime() - now.getTime()

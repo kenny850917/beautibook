@@ -1,6 +1,6 @@
 import { BookingHold, HoldAnalytics } from "@prisma/client";
 import { PrismaService } from "./PrismaService";
-import { format } from "date-fns";
+import { format, addMinutes } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { getCurrentUtcTime, getLogTimestamp } from "@/lib/utils/calendar";
 
@@ -91,9 +91,9 @@ export class BookingHoldService {
         );
       }
 
-      // Create 5-minute expiration time using UTC utilities
+      // ✅ UTC NORMALIZATION: Create 5-minute expiration time using proper utilities
       const currentTime = getCurrentUtcTime();
-      const expiresAt = new Date(currentTime.getTime() + 5 * 60 * 1000); // 5 minutes
+      const expiresAt = addMinutes(currentTime, 5); // 5 minutes
 
       // ✅ FIX: Create SINGLE hold for exact slot requested
       // This prevents overlapping holds that cause 9:00 AM → 2:45 PM blocking
@@ -143,9 +143,7 @@ export class BookingHoldService {
     durationMinutes: number = 15
   ): Promise<{ available: boolean; reason?: string }> {
     try {
-      const slotEndTime = new Date(
-        slotDateTime.getTime() + durationMinutes * 60000
-      );
+      const slotEndTime = addMinutes(slotDateTime, durationMinutes);
 
       // Check for overlapping confirmed bookings
       const overlappingBookings = await this.prisma.booking.findMany({
@@ -172,9 +170,9 @@ export class BookingHoldService {
 
       // Check if any booking overlaps with our time slot
       for (const booking of overlappingBookings) {
-        const bookingEndTime = new Date(
-          booking.slot_datetime.getTime() +
-            booking.service.duration_minutes * 60000
+        const bookingEndTime = addMinutes(
+          booking.slot_datetime,
+          booking.service.duration_minutes
         );
 
         console.log(
@@ -241,8 +239,9 @@ export class BookingHoldService {
 
       // Check if any active hold overlaps with our time slot
       for (const hold of overlappingHolds) {
-        const holdEndTime = new Date(
-          hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
+        const holdEndTime = addMinutes(
+          hold.slot_datetime,
+          hold.service.duration_minutes
         );
 
         // Check for overlap: hold ends after our slot starts

@@ -13,6 +13,10 @@ BeautiBook currently has **critical timezone inconsistencies** causing booking c
 - **Phase 1: Critical Hold System** - 9:00 AM → 2:45 PM blocking issue **FIXED!**
 - **Key Phase 2 Items**: AnalyticsService (was already correct)
 - **Key Phase 3 Items**: Availability API timezone fix
+- **🔥 CRITICAL BUG FIXED**: UTC/PST timezone mixing in overlap detection causing impossible conflicts
+- **⚡ TIMEZONE UTILITIES**: Replaced hardcoded timezone math with proper `fromZonedTime()` functions (DST-safe)
+- **🛠️ MANUAL DATE MATH ELIMINATED**: Replaced 46+ instances of manual timezone calculations with proper utilities
+- **📅 BUSINESS LOGIC STANDARDIZED**: Fixed Admin API "last 30 days" logic to use PST business days
 
 ### 🔄 **REMAINING** (Optional - Core Issue Resolved)
 

@@ -19,7 +19,7 @@ import {
   MessageSquare,
   Home,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addMinutes } from "date-fns";
 import { parseIsoToPstComponents } from "@/lib/utils/calendar";
 
 interface Booking {
@@ -92,8 +92,9 @@ export function BookingSuccessContent() {
     if (!booking) return "";
 
     const startDate = parseISO(booking.slot_datetime);
-    const endDate = new Date(
-      startDate.getTime() + (booking.service?.duration_minutes || 60) * 60000
+    const endDate = addMinutes(
+      startDate,
+      booking.service?.duration_minutes || 60
     );
 
     const formatForCalendar = (date: Date) => {
@@ -115,8 +116,9 @@ export function BookingSuccessContent() {
     if (!booking) return;
 
     const startDate = parseISO(booking.slot_datetime);
-    const endDate = new Date(
-      startDate.getTime() + (booking.service?.duration_minutes || 60) * 60000
+    const endDate = addMinutes(
+      startDate,
+      booking.service?.duration_minutes || 60
     );
 
     const formatForICS = (date: Date) => {

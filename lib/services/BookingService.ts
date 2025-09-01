@@ -1,7 +1,12 @@
 import { prisma } from "./PrismaService";
 import { AvailabilityService } from "./AvailabilityService";
-import { parseISO } from "date-fns";
-import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
+import { parseISO, addMinutes } from "date-fns";
+import {
+  createPstDateTime,
+  getTodayPst,
+  checkTimeOverlap,
+  getCurrentUtcTime,
+} from "@/lib/utils/calendar";
 
 /**
  * Singleton service for booking logic and conflict prevention
@@ -76,12 +81,8 @@ export class BookingService {
         where: {
           staff_id: staffId,
           slot_datetime: {
-            gte: new Date(
-              slotDateTime.getTime() - service.duration_minutes * 60000
-            ),
-            lte: new Date(
-              slotDateTime.getTime() + service.duration_minutes * 60000
-            ),
+            gte: addMinutes(slotDateTime, -service.duration_minutes),
+            lte: addMinutes(slotDateTime, service.duration_minutes),
           },
         },
         include: {
@@ -89,22 +90,22 @@ export class BookingService {
         },
       });
 
-      // Check for actual time overlap
+      // ✅ UTC NORMALIZATION: Use standardized overlap detection
       const hasConflict = conflictingBookings.some((booking) => {
-        const bookingEnd = new Date(
-          booking.slot_datetime.getTime() +
-            booking.service.duration_minutes * 60000
+        const bookingEnd = addMinutes(
+          booking.slot_datetime,
+          booking.service.duration_minutes
         );
-        const newBookingEnd = new Date(
-          slotDateTime.getTime() + service.duration_minutes * 60000
+        const newBookingEnd = addMinutes(
+          slotDateTime,
+          service.duration_minutes
         );
 
-        return (
-          (slotDateTime >= booking.slot_datetime &&
-            slotDateTime < bookingEnd) ||
-          (newBookingEnd > booking.slot_datetime &&
-            newBookingEnd <= bookingEnd) ||
-          (slotDateTime <= booking.slot_datetime && newBookingEnd >= bookingEnd)
+        return checkTimeOverlap(
+          booking.slot_datetime, // Existing booking start
+          bookingEnd, // Existing booking end
+          slotDateTime, // New booking start
+          newBookingEnd // New booking end
         );
       });
 
@@ -414,9 +415,7 @@ export class BookingService {
   ): boolean {
     const now = new Date();
     const bookingTime = new Date(booking.slot_datetime);
-    const minimumNoticeTime = new Date(
-      now.getTime() + minimumHours * 60 * 60 * 1000
-    );
+    const minimumNoticeTime = addMinutes(now, minimumHours * 60);
 
     return bookingTime > minimumNoticeTime;
   }

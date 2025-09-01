@@ -4,6 +4,12 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { PrismaService } from "@/lib/services/PrismaService";
+import {
+  getCurrentUtcTime,
+  createUtcDateRange,
+  getTodayPst,
+} from "@/lib/utils/calendar";
+import { format, subDays } from "date-fns";
 
 // Validation schema for creating new staff
 const CreateStaffSchema = z.object({
@@ -66,7 +72,9 @@ export async function GET(request: NextRequest) {
         bookings: {
           where: {
             slot_datetime: {
-              gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+              gte: createUtcDateRange(
+                format(subDays(new Date(getTodayPst()), 30), "yyyy-MM-dd")
+              ).startUtc, // Last 30 PST days
             },
           },
           select: {

@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { PrismaService } from "@/lib/services/PrismaService";
+import {
+  getCurrentUtcTime,
+  createUtcDateRange,
+  getTodayPst,
+} from "@/lib/utils/calendar";
+import { format, subDays } from "date-fns";
 
 // Validation schema for service update
 const ServiceUpdateSchema = z.object({
@@ -109,7 +115,9 @@ export async function PUT(
         bookings: {
           where: {
             slot_datetime: {
-              gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
+              gte: createUtcDateRange(
+                format(subDays(new Date(getTodayPst()), 30), "yyyy-MM-dd")
+              ).startUtc, // Last 30 PST days
             },
           },
           select: {
@@ -223,7 +231,9 @@ export async function GET(
         bookings: {
           where: {
             slot_datetime: {
-              gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
+              gte: createUtcDateRange(
+                format(subDays(new Date(getTodayPst()), 30), "yyyy-MM-dd")
+              ).startUtc, // Last 30 PST days
             },
           },
           select: {

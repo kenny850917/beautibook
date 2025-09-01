@@ -1,7 +1,9 @@
+import { toZonedTime } from "date-fns-tz";
 // Removed unused imports - types are inferred from Prisma operations
 import { PrismaService } from "./PrismaService";
 import { parseISO, format, addDays } from "date-fns";
 import { createPstDateTime, getTodayPst } from "@/lib/utils/calendar";
+const PST_TIMEZONE = "America/Los_Angeles";
 
 interface AnalyticsInsights {
   // Hold Analytics
@@ -405,7 +407,9 @@ export class AnalyticsService {
     // Group by hour
     const hourCounts: { [hour: number]: number } = {};
     bookings.forEach((booking) => {
-      const hour = booking.slot_datetime.getHours();
+      // ✅ UTC NORMALIZATION: Convert to PST before extracting hour
+      const pstTime = toZonedTime(booking.slot_datetime, PST_TIMEZONE);
+      const hour = pstTime.getHours();
       hourCounts[hour] = (hourCounts[hour] || 0) + 1;
     });
 

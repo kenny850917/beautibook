@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { PrismaService } from "@/lib/services/PrismaService";
+import { getCurrentUtcTime } from "@/lib/utils/calendar";
 import { DayOfWeek } from "@prisma/client";
 
 // Validation schema for block-based availability updates
@@ -384,8 +385,8 @@ export async function PUT(
       }
     }
 
-    // Check for conflicts with existing bookings
-    const now = new Date();
+    // ✅ UTC NORMALIZATION: Check for conflicts with existing bookings using UTC utilities
+    const now = getCurrentUtcTime();
     const existingBookings = await prisma.booking.findMany({
       where: {
         staff_id: staffId,

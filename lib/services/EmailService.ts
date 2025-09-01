@@ -251,7 +251,7 @@ export class EmailService {
         customer_name: "Test Customer",
         service_name: "Test Service",
         staff_name: "Test Staff",
-        appointment_date: new Date().toLocaleString(),
+        appointment_date: "Test Date (PST)", // Test data - real appointments use PST formatting
         duration: "60 minutes",
         price: "$75.00",
         salon_name: "BeautiBook",
