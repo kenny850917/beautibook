@@ -27,11 +27,12 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   resource?: {
-    type: "booking" | "availability" | "hold";
+    type: "booking" | "availability" | "hold" | "schedule-block";
     staffId: string;
     serviceId?: string;
     customerId?: string;
     status?: "confirmed" | "pending" | "cancelled";
+    blockType?: string; // For schedule blocks: "lunch", "break", "appointment", "personal"
   };
 }
 
@@ -193,6 +194,9 @@ export default function BaseCalendar({
         break;
       case "availability":
         className = "event-secondary";
+        break;
+      case "schedule-block":
+        className = "event-schedule-block";
         break;
       default:
         className = "event-info";
@@ -480,6 +484,12 @@ export default function BaseCalendar({
         .rbc-event.event-success {
           background-color: #0d7377;
           color: white;
+        }
+
+        .rbc-event.event-schedule-block {
+          background-color: #9aa0a6;
+          color: white;
+          opacity: 0.8;
         }
 
         /* Subtle gradient overlay for depth */

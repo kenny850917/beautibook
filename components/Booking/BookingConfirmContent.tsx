@@ -27,6 +27,14 @@ interface Service {
   base_price: number;
 }
 
+interface ServiceDetail {
+  id: string;
+  name: string;
+  base_price: number;
+  custom_price?: number | null;
+  duration_minutes: number;
+}
+
 interface Staff {
   id: string;
   name: string;
@@ -100,9 +108,12 @@ export function BookingConfirmContent() {
       ]);
 
       // Get actual staff pricing (override or base price)
+      // Find the custom price for this service from the staff's serviceDetails
+      const serviceDetails = staffData.staff.serviceDetails?.find(
+        (detail: ServiceDetail) => detail.id === serviceId
+      );
       const actualPrice =
-        (serviceId && staffData.staff.customPricing?.[serviceId]) ||
-        serviceData.service.base_price;
+        serviceDetails?.custom_price || serviceData.service.base_price;
 
       const bookingDetails: BookingDetails = {
         service: serviceData.service,

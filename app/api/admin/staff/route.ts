@@ -67,6 +67,16 @@ export async function GET(request: NextRequest) {
             start_time: true,
             end_time: true,
             override_date: true,
+            scheduleBlocks: {
+              select: {
+                id: true,
+                block_start_time: true,
+                block_end_time: true,
+                block_type: true,
+                title: true,
+                is_recurring: true,
+              },
+            },
           },
         },
         bookings: {

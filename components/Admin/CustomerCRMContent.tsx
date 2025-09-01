@@ -34,7 +34,7 @@ interface ApiStatsResponse {
 interface CustomerWithHistory extends Customer {
   bookings: Array<{
     id: string;
-    slot_datetime: Date;
+    slot_datetime: string; // API returns ISO string, not Date object
     final_price: number;
     service: {
       name: string;
@@ -510,7 +510,7 @@ export default function CustomerCRMContent() {
                           <p className="text-gray-500">
                             {(() => {
                               const components = parseIsoToPstComponents(
-                                booking.slot_datetime.toISOString()
+                                booking.slot_datetime
                               );
                               const dateObj = parseISO(
                                 components.date + "T00:00:00"

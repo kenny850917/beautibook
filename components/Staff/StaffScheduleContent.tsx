@@ -19,11 +19,12 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   resource?: {
-    type: "booking" | "availability" | "hold";
+    type: "booking" | "availability" | "hold" | "schedule-block";
     staffId: string;
     serviceId?: string;
     customerId?: string;
     status?: "confirmed" | "pending" | "cancelled";
+    blockType?: string;
   };
 }
 
@@ -64,6 +65,40 @@ interface DayStats {
   appointments: number;
   revenue: number;
   hours: number;
+}
+
+interface ScheduleBlock {
+  id: string;
+  block_start_time: string;
+  block_end_time: string;
+  block_type: string;
+  title: string;
+  is_recurring: boolean;
+}
+
+interface DayAvailability {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  override_date: string | null;
+  blocks: ScheduleBlock[];
+}
+
+interface WeeklySchedule {
+  MONDAY: DayAvailability[];
+  TUESDAY: DayAvailability[];
+  WEDNESDAY: DayAvailability[];
+  THURSDAY: DayAvailability[];
+  FRIDAY: DayAvailability[];
+  SATURDAY: DayAvailability[];
+  SUNDAY: DayAvailability[];
+}
+
+interface AvailabilityData {
+  weeklySchedule: WeeklySchedule;
+  overrides: DayAvailability[];
+  upcomingBookings: unknown[];
 }
 
 interface StaffAppointmentData {
@@ -152,6 +187,7 @@ export default function StaffScheduleContent() {
   });
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [appointments, setAppointments] = useState<AppointmentEvent[]>([]);
+  const [scheduleBlocks, setScheduleBlocks] = useState<CalendarEvent[]>([]);
   const [todayStats, setTodayStats] = useState<DayStats>({
     appointments: 0,
     revenue: 0,
@@ -165,6 +201,104 @@ export default function StaffScheduleContent() {
     "day"
   );
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Helper function to transform schedule blocks to calendar events
+  const transformScheduleBlocksToEvents = useCallback(
+    (
+      availabilityData: AvailabilityData,
+      startDate: Date,
+      endDate: Date
+    ): CalendarEvent[] => {
+      const scheduleEvents: CalendarEvent[] = [];
+
+      // Check if we have the correct data structure
+      if (!availabilityData || !availabilityData.weeklySchedule) {
+        console.warn("No weekly schedule data found");
+        return scheduleEvents;
+      }
+
+      // Generate schedule blocks for each day in the range
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const dayOfWeek = currentDate
+          .toLocaleDateString("en-US", { weekday: "long" })
+          .toUpperCase();
+
+        // Get schedule blocks for this day of the week
+        const daySchedules =
+          availabilityData.weeklySchedule[dayOfWeek as keyof WeeklySchedule] ||
+          [];
+
+        daySchedules.forEach((dayAvailability: DayAvailability) => {
+          // Only show blocks for recurring schedules (not date-specific overrides)
+          if (
+            !dayAvailability.override_date &&
+            dayAvailability.blocks &&
+            dayAvailability.blocks.length > 0
+          ) {
+            dayAvailability.blocks.forEach((block: ScheduleBlock) => {
+              // Create start and end times for the block on this specific date
+              const dateString = currentDate.toISOString().split("T")[0];
+              const startTime = createPstDateTime(
+                dateString,
+                block.block_start_time
+              );
+              const endTime = createPstDateTime(
+                dateString,
+                block.block_end_time
+              );
+
+              scheduleEvents.push({
+                id: `schedule-block-${block.id}-${
+                  currentDate.toISOString().split("T")[0]
+                }`,
+                title: block.title || "Schedule Block",
+                start: parseISO(startTime),
+                end: parseISO(endTime),
+                resource: {
+                  type: "schedule-block",
+                  staffId: session?.user?.staffId || "",
+                  blockType: block.block_type,
+                },
+              });
+            });
+          }
+        });
+
+        // Move to next day
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      return scheduleEvents;
+    },
+    [session?.user?.staffId]
+  );
+
+  // Load schedule blocks for the current date range
+  const loadScheduleBlocks = useCallback(
+    async (startDate: Date, endDate: Date) => {
+      if (!session?.user?.staffId) return [];
+
+      try {
+        const response = await fetch(`/api/staff/availability`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch availability");
+        }
+
+        const data = await response.json();
+        const scheduleEvents = transformScheduleBlocksToEvents(
+          data.availability || {},
+          startDate,
+          endDate
+        );
+        return scheduleEvents;
+      } catch (error) {
+        console.error("Error loading schedule blocks:", error);
+        return [];
+      }
+    },
+    [session?.user?.staffId, transformScheduleBlocksToEvents]
+  );
 
   // Load appointments for a specific date range
   const loadAppointments = useCallback(
@@ -231,16 +365,26 @@ export default function StaffScheduleContent() {
         // Store appointments for modal and convert to calendar events for display
         setAppointments(realEvents);
         const calendarEvents = transformToCalendarEvents(realEvents);
-        setEvents(calendarEvents);
+
+        // Load and combine schedule blocks for the same date range
+        const scheduleBlockEvents = await loadScheduleBlocks(
+          weekStart,
+          weekEnd
+        );
+        setScheduleBlocks(scheduleBlockEvents);
+
+        // Combine appointments and schedule blocks for display
+        setEvents([...calendarEvents, ...scheduleBlockEvents]);
       } catch (error) {
         console.error("Error loading appointments:", error);
         setEvents([]);
         setAppointments([]);
+        setScheduleBlocks([]);
       } finally {
         setIsLoadingAppointments(false);
       }
     },
-    [session?.user?.staffId]
+    [session?.user?.staffId, loadScheduleBlocks]
   );
 
   // Load today's stats (once on mount)

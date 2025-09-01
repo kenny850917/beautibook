@@ -25,12 +25,37 @@ interface AdminCalendarEvent {
   start: Date;
   end: Date;
   resource: {
-    type: "booking" | "availability" | "hold";
+    type: "booking" | "availability" | "hold" | "schedule-block";
     staffId: string;
     serviceId?: string;
     customerId?: string;
     status?: "confirmed" | "pending" | "cancelled"; // Match BaseCalendar expectations (lowercase)
+    blockType?: string; // For schedule blocks
   };
+}
+
+interface ScheduleBlock {
+  id: string;
+  block_start_time: string;
+  block_end_time: string;
+  block_type: string;
+  title: string;
+  is_recurring: boolean;
+}
+
+interface StaffAvailability {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  override_date: string | null;
+  scheduleBlocks: ScheduleBlock[];
+}
+
+interface StaffMember {
+  id: string;
+  name: string;
+  availabilitySchedule: StaffAvailability[];
 }
 
 interface BookingData {
@@ -93,6 +118,9 @@ export default function AdminDashboardContent() {
   const [adminAppointments, setAdminAppointments] = useState<
     AdminAppointmentEvent[]
   >([]);
+  const [scheduleBlocks, setScheduleBlocks] = useState<AdminCalendarEvent[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<{
@@ -114,110 +142,222 @@ export default function AdminDashboardContent() {
   } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Load bookings for a specific date range
-  const loadBookings = useCallback(async (date: Date) => {
-    try {
-      setIsLoadingBookings(true);
+  // Helper function to transform schedule blocks to calendar events for admin view
+  const transformScheduleBlocksToAdminEvents = useCallback(
+    (
+      staffList: StaffMember[],
+      startDate: Date,
+      endDate: Date
+    ): AdminCalendarEvent[] => {
+      const scheduleEvents: AdminCalendarEvent[] = [];
 
-      // Get the week range for the current calendar view
-      const weekStart = startOfWeek(date);
-      const weekEnd = endOfWeek(date);
+      // Generate schedule blocks for each day in the range
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const dayOfWeek = currentDate
+          .toLocaleDateString("en-US", { weekday: "long" })
+          .toUpperCase();
 
-      // Fetch bookings for the specific week using date range
-      const bookingsResponse = await fetch(
-        `/api/admin/bookings?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
-      );
+        staffList.forEach((staff) => {
+          if (staff.availabilitySchedule) {
+            staff.availabilitySchedule.forEach(
+              (dayAvailability: StaffAvailability) => {
+                // Only show blocks for the current day of week
+                if (
+                  dayAvailability.day_of_week === dayOfWeek &&
+                  dayAvailability.scheduleBlocks &&
+                  dayAvailability.scheduleBlocks.length > 0
+                ) {
+                  // Only show blocks for recurring schedules (not date-specific overrides)
+                  if (!dayAvailability.override_date) {
+                    dayAvailability.scheduleBlocks.forEach(
+                      (block: ScheduleBlock) => {
+                        // Create start and end times for the block on this specific date
+                        const dateString = currentDate
+                          .toISOString()
+                          .split("T")[0];
+                        const startTime = createPstDateTime(
+                          dateString,
+                          block.block_start_time
+                        );
+                        const endTime = createPstDateTime(
+                          dateString,
+                          block.block_end_time
+                        );
 
-      if (!bookingsResponse.ok) {
-        throw new Error("Failed to fetch bookings");
-      }
-
-      const bookingsData = await bookingsResponse.json();
-
-      // Convert bookings to calendar events using timezone-safe parsing
-      const calendarEvents: AdminCalendarEvent[] = bookingsData.bookings.map(
-        (booking: BookingData) => {
-          // Use timezone-safe calendar event creation
-          const calendarEvent = createCalendarEvent({
-            slot_datetime: booking.slot_datetime,
-            service: booking.service,
-            customer_name: booking.customer_name,
-          });
-
-          const startTime = calendarEvent.start;
-          const endTime = calendarEvent.end;
-
-          // Convert database status (uppercase) to calendar format (lowercase)
-          const calendarStatusMap = {
-            CONFIRMED: "confirmed",
-            PENDING: "pending",
-            CANCELLED: "cancelled",
-            NOSHOW: "cancelled", // Treat no-show as cancelled for calendar display
-          } as const;
-
-          const calendarStatus =
-            calendarStatusMap[booking.status] || "confirmed";
-          console.log(
-            `[ADMIN CALENDAR] Converting status: ${booking.status} → ${calendarStatus} for ${booking.customer_name}`
-          );
-
-          return {
-            id: booking.id,
-            title: `${booking.service.name} - ${booking.customer_name}`,
-            start: startTime,
-            end: endTime,
-            resource: {
-              type: "booking" as const,
-              staffId: booking.staff_id,
-              serviceId: booking.service_id,
-              customerId: booking.customer_id,
-              status: calendarStatus,
-            },
-          };
-        }
-      );
-
-      // Convert bookings to admin appointment events for the edit modal using timezone-safe parsing
-      const appointmentEvents: AdminAppointmentEvent[] =
-        bookingsData.bookings.map((booking: BookingData) => {
-          // Use timezone-safe calendar event creation
-          const calendarEvent = createCalendarEvent({
-            slot_datetime: booking.slot_datetime,
-            service: booking.service,
-            customer_name: booking.customer_name,
-          });
-
-          const startTime = calendarEvent.start;
-          const endTime = calendarEvent.end;
-
-          return {
-            id: booking.id,
-            title: `${booking.service.name} - ${booking.customer_name}`,
-            start: startTime,
-            end: endTime,
-            resource: {
-              serviceName: booking.service.name,
-              customerName: booking.customer_name,
-              customerPhone: booking.customer_phone,
-              customerEmail: booking.customer_email || undefined,
-              price: booking.final_price,
-              status: booking.status, // Pass raw database status to modal for proper conversion
-              notes: booking.notes || undefined,
-              staffId: booking.staff_id,
-              staffName: booking.staff.name,
-            },
-          };
+                        scheduleEvents.push({
+                          id: `schedule-block-${staff.id}-${block.id}-${
+                            currentDate.toISOString().split("T")[0]
+                          }`,
+                          title: `${staff.name}: ${
+                            block.title || "Schedule Block"
+                          }`,
+                          start: parseISO(startTime),
+                          end: parseISO(endTime),
+                          resource: {
+                            type: "schedule-block",
+                            staffId: staff.id,
+                            blockType: block.block_type,
+                          },
+                        });
+                      }
+                    );
+                  }
+                }
+              }
+            );
+          }
         });
 
-      setEvents(calendarEvents);
-      setAdminAppointments(appointmentEvents);
-    } catch (error) {
-      console.error("Error loading bookings:", error);
-      setEvents([]);
-    } finally {
-      setIsLoadingBookings(false);
-    }
-  }, []);
+        // Move to next day
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      return scheduleEvents;
+    },
+    []
+  );
+
+  // Load schedule blocks for all staff
+  const loadScheduleBlocks = useCallback(
+    async (startDate: Date, endDate: Date) => {
+      try {
+        const response = await fetch(`/api/admin/staff`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch staff availability");
+        }
+
+        const data = await response.json();
+        const scheduleEvents = transformScheduleBlocksToAdminEvents(
+          data.staff || [],
+          startDate,
+          endDate
+        );
+        return scheduleEvents;
+      } catch (error) {
+        console.error("Error loading schedule blocks:", error);
+        return [];
+      }
+    },
+    [transformScheduleBlocksToAdminEvents]
+  );
+
+  // Load bookings for a specific date range
+  const loadBookings = useCallback(
+    async (date: Date) => {
+      try {
+        setIsLoadingBookings(true);
+
+        // Get the week range for the current calendar view
+        const weekStart = startOfWeek(date);
+        const weekEnd = endOfWeek(date);
+
+        // Fetch bookings for the specific week using date range
+        const bookingsResponse = await fetch(
+          `/api/admin/bookings?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+        );
+
+        if (!bookingsResponse.ok) {
+          throw new Error("Failed to fetch bookings");
+        }
+
+        const bookingsData = await bookingsResponse.json();
+
+        // Convert bookings to calendar events using timezone-safe parsing
+        const calendarEvents: AdminCalendarEvent[] = bookingsData.bookings.map(
+          (booking: BookingData) => {
+            // Use timezone-safe calendar event creation
+            const calendarEvent = createCalendarEvent({
+              slot_datetime: booking.slot_datetime,
+              service: booking.service,
+              customer_name: booking.customer_name,
+            });
+
+            const startTime = calendarEvent.start;
+            const endTime = calendarEvent.end;
+
+            // Convert database status (uppercase) to calendar format (lowercase)
+            const calendarStatusMap = {
+              CONFIRMED: "confirmed",
+              PENDING: "pending",
+              CANCELLED: "cancelled",
+              NOSHOW: "cancelled", // Treat no-show as cancelled for calendar display
+            } as const;
+
+            const calendarStatus =
+              calendarStatusMap[booking.status] || "confirmed";
+            console.log(
+              `[ADMIN CALENDAR] Converting status: ${booking.status} → ${calendarStatus} for ${booking.customer_name}`
+            );
+
+            return {
+              id: booking.id,
+              title: `${booking.service.name} - ${booking.customer_name}`,
+              start: startTime,
+              end: endTime,
+              resource: {
+                type: "booking" as const,
+                staffId: booking.staff_id,
+                serviceId: booking.service_id,
+                customerId: booking.customer_id,
+                status: calendarStatus,
+              },
+            };
+          }
+        );
+
+        // Convert bookings to admin appointment events for the edit modal using timezone-safe parsing
+        const appointmentEvents: AdminAppointmentEvent[] =
+          bookingsData.bookings.map((booking: BookingData) => {
+            // Use timezone-safe calendar event creation
+            const calendarEvent = createCalendarEvent({
+              slot_datetime: booking.slot_datetime,
+              service: booking.service,
+              customer_name: booking.customer_name,
+            });
+
+            const startTime = calendarEvent.start;
+            const endTime = calendarEvent.end;
+
+            return {
+              id: booking.id,
+              title: `${booking.service.name} - ${booking.customer_name}`,
+              start: startTime,
+              end: endTime,
+              resource: {
+                serviceName: booking.service.name,
+                customerName: booking.customer_name,
+                customerPhone: booking.customer_phone,
+                customerEmail: booking.customer_email || undefined,
+                price: booking.final_price,
+                status: booking.status, // Pass raw database status to modal for proper conversion
+                notes: booking.notes || undefined,
+                staffId: booking.staff_id,
+                staffName: booking.staff.name,
+              },
+            };
+          });
+
+        // Load and combine schedule blocks for the same date range
+        const scheduleBlockEvents = await loadScheduleBlocks(
+          weekStart,
+          weekEnd
+        );
+        setScheduleBlocks(scheduleBlockEvents);
+
+        // Combine appointments and schedule blocks for display
+        setEvents([...calendarEvents, ...scheduleBlockEvents]);
+        setAdminAppointments(appointmentEvents);
+      } catch (error) {
+        console.error("Error loading bookings:", error);
+        setEvents([]);
+        setScheduleBlocks([]);
+      } finally {
+        setIsLoadingBookings(false);
+      }
+    },
+    [loadScheduleBlocks]
+  );
 
   // Load dashboard stats (once on mount)
   useEffect(() => {
