@@ -5,6 +5,9 @@ import {
   parseIsoToPstComponents,
   createPstDateTime,
   PST_TIMEZONE,
+  checkTimeOverlap,
+  getCurrentUtcTime,
+  createUtcDateRange,
 } from "@/lib/utils/calendar";
 import { toZonedTime } from "date-fns-tz";
 
@@ -300,27 +303,22 @@ export class AvailabilityService {
       )}: ${availability.start_time} - ${availability.end_time}`
     );
 
-    // Get existing bookings for the day using PST boundaries
-    // Use PST timezone utilities to ensure correct day boundaries regardless of server timezone
+    // ✅ UTC NORMALIZATION: Use standardized date range utilities
     const dateStr = date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
-    const pstStartOfDayIso = createPstDateTime(dateStr, "00:00");
-    const pstEndOfDayIso = createPstDateTime(dateStr, "23:59");
-
-    const startOfDay = parseISO(pstStartOfDayIso);
-    const endOfDay = parseISO(pstEndOfDayIso);
+    const { startUtc, endUtc } = createUtcDateRange(dateStr);
 
     console.log(
       `[TIMEZONE DEBUG] Input date: ${date.toISOString()}, Timezone: ${
         Intl.DateTimeFormat().resolvedOptions().timeZone
-      }, startOfDay: ${startOfDay.toISOString()}, endOfDay: ${endOfDay.toISOString()}`
+      }, startUtc: ${startUtc.toISOString()}, endUtc: ${endUtc.toISOString()}`
     );
 
     const existingBookings = await prisma.booking.findMany({
       where: {
         staff_id: staffId,
         slot_datetime: {
-          gte: startOfDay,
-          lte: endOfDay,
+          gte: startUtc,
+          lte: endUtc,
         },
       },
       include: {
@@ -334,12 +332,12 @@ export class AvailabilityService {
       } existing bookings for staff ${staffId} on ${format(date, "yyyy-MM-dd")}`
     );
     console.log(
-      `[QUERY DEBUG] Staff ID: ${staffId}, Service ID: ${serviceDurationMinutes}min service, Querying date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`
+      `[QUERY DEBUG] Staff ID: ${staffId}, Service ID: ${serviceDurationMinutes}min service, Querying date range: ${startUtc.toISOString()} to ${endUtc.toISOString()}`
     );
     console.log(
-      `[ENVIRONMENT DEBUG] Server time: ${new Date().toISOString()}, Date range: ${this.formatPstTime(
-        startOfDay
-      )} to ${this.formatPstTime(endOfDay)} PST`
+      `[ENVIRONMENT DEBUG] Server time: ${getCurrentUtcTime().toISOString()}, Date range: ${this.formatPstTime(
+        startUtc
+      )} to ${this.formatPstTime(endUtc)} PST`
     );
     existingBookings.forEach((booking) => {
       const bookingEnd = new Date(
@@ -357,8 +355,8 @@ export class AvailabilityService {
       );
     });
 
-    // Get active holds
-    const now = new Date();
+    // ✅ UTC NORMALIZATION: Get active holds using UTC utilities
+    const now = getCurrentUtcTime();
     console.log(
       `[AVAILABILITY DEBUG] Checking holds for staff ${staffId} at ${now.toISOString()}`
     );
@@ -370,8 +368,8 @@ export class AvailabilityService {
           gt: now,
         },
         slot_datetime: {
-          gte: startOfDay,
-          lte: endOfDay,
+          gte: startUtc,
+          lte: endUtc,
         },
       },
       include: {
@@ -416,18 +414,20 @@ export class AvailabilityService {
             );
           });
 
-        // Check for conflicts with existing bookings (improved overlap detection)
+        // ✅ UTC NORMALIZATION: Use standardized overlap detection for bookings
         const hasBookingConflict = existingBookings.some((booking) => {
           const bookingEnd = new Date(
             booking.slot_datetime.getTime() +
               booking.service.duration_minutes * 60000
           );
 
-          // Proper overlap detection: Two ranges overlap if:
-          // 1. Booking starts before slot ends AND
-          // 2. Slot starts before booking ends
-          const hasOverlap =
-            booking.slot_datetime < slotEndTime && currentSlot < bookingEnd;
+          // Use standardized UTC-aware overlap detection
+          const hasOverlap = checkTimeOverlap(
+            booking.slot_datetime, // Booking start (UTC)
+            bookingEnd, // Booking end (UTC)
+            currentSlot, // Slot start (UTC)
+            slotEndTime // Slot end (UTC)
+          );
 
           // Only log conflicts, not every check
           if (hasOverlap) {
@@ -445,15 +445,19 @@ export class AvailabilityService {
           return hasOverlap;
         });
 
-        // Check for conflicts with active holds (improved overlap detection)
+        // ✅ UTC NORMALIZATION: Use standardized overlap detection
         const hasHoldConflict = activeHolds.some((hold) => {
           const holdEnd = new Date(
             hold.slot_datetime.getTime() + hold.service.duration_minutes * 60000
           );
 
-          // Same logic as booking conflicts for consistency
-          const hasOverlap =
-            hold.slot_datetime < slotEndTime && currentSlot < holdEnd;
+          // Use standardized UTC-aware overlap detection
+          const hasOverlap = checkTimeOverlap(
+            hold.slot_datetime, // Hold start (UTC)
+            holdEnd, // Hold end (UTC)
+            currentSlot, // Slot start (UTC)
+            slotEndTime // Slot end (UTC)
+          );
 
           // Only log conflicts, not every check
           if (hasOverlap) {

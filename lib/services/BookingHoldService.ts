@@ -2,6 +2,7 @@ import { BookingHold, HoldAnalytics } from "@prisma/client";
 import { PrismaService } from "./PrismaService";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { getCurrentUtcTime, getLogTimestamp } from "@/lib/utils/calendar";
 
 // PST timezone for consistent logging
 const PST_TIMEZONE = "America/Los_Angeles";
@@ -64,31 +65,19 @@ export class BookingHoldService {
         throw new Error("Service not found");
       }
 
-      // Calculate how many 15-minute slots are needed
-      const slotsNeeded = Math.ceil(service.duration_minutes / 15);
-      const requiredSlots: Date[] = [];
-
-      // Generate all required consecutive time slots
-      for (let i = 0; i < slotsNeeded; i++) {
-        const slotTime = new Date(slotDateTime);
-        slotTime.setMinutes(slotTime.getMinutes() + i * 15);
-        requiredSlots.push(slotTime);
-      }
-
-      // Use the SAME validation logic as the calendar to prevent mismatches
+      // ✅ UTC NORMALIZATION FIX: Single hold for exact slot only
+      // Duration-based blocking handled by overlap detection in AvailabilityService
       console.log(
-        `[HOLD DEBUG] Validating ${
-          requiredSlots.length
-        } consecutive slots for ${
+        `[HOLD DEBUG] Creating single hold for ${
           service.duration_minutes
-        }-minute service starting at ${this.formatPstTime(slotDateTime)} PST`
+        }-minute service at ${this.formatPstTime(slotDateTime)} PST`
       );
 
-      // Check the FULL service duration at once (like calendar does) instead of individual slots
+      // Check the FULL service duration at once (like calendar does)
       const fullServiceAvailable = await this.checkSlotAvailability(
         staffId,
         slotDateTime,
-        service.duration_minutes // Check full 180-minute duration
+        service.duration_minutes // Check full service duration
       );
 
       if (!fullServiceAvailable.available) {
@@ -102,43 +91,43 @@ export class BookingHoldService {
         );
       }
 
-      // Create 5-minute expiration time
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+      // Create 5-minute expiration time using UTC utilities
+      const currentTime = getCurrentUtcTime();
+      const expiresAt = new Date(currentTime.getTime() + 5 * 60 * 1000); // 5 minutes
 
-      // Create holds for ALL required slots in a transaction
-      const holds = await this.prisma.$transaction(async (tx) => {
-        const createdHolds: BookingHold[] = [];
-        for (const slot of requiredSlots) {
-          const hold = await tx.bookingHold.create({
-            data: {
-              session_id: sessionId,
-              staff_id: staffId,
-              service_id: serviceId,
-              slot_datetime: slot,
-              expires_at: expiresAt,
-            },
-          });
-          createdHolds.push(hold);
-        }
-        return createdHolds;
+      // ✅ FIX: Create SINGLE hold for exact slot requested
+      // This prevents overlapping holds that cause 9:00 AM → 2:45 PM blocking
+      const hold = await this.prisma.bookingHold.create({
+        data: {
+          session_id: sessionId,
+          staff_id: staffId,
+          service_id: serviceId,
+          slot_datetime: slotDateTime, // Exact slot only
+          expires_at: expiresAt,
+        },
       });
 
-      // Return the first (primary) hold - represents the main booking time
-      const primaryHold = holds[0];
+      // Setup automatic cleanup for the single hold
+      this.scheduleHoldCleanup(hold.id, sessionId);
 
-      // Setup automatic cleanup for the session (will clean all holds for this session)
-      this.scheduleHoldCleanup(primaryHold.id, sessionId);
-
-      // Track analytics for hold creation (track primary hold)
+      // Track analytics for hold creation using UTC utilities
       await this.trackHoldAnalytics({
         session_id: sessionId,
         service_id: serviceId,
         staff_id: staffId,
-        held_at: new Date(),
+        held_at: getCurrentUtcTime(),
         converted: false,
       });
 
-      return primaryHold;
+      console.log(
+        `[HOLD DEBUG] ✅ Created single hold ${
+          hold.id
+        } for ${this.formatPstTime(
+          slotDateTime
+        )} PST (expires: ${this.formatPstTime(expiresAt)})`
+      );
+
+      return hold;
     } catch (error) {
       console.error("Error creating booking hold:", error);
       throw error;

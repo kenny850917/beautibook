@@ -380,6 +380,16 @@ Beauty salon booking system with 5-minute hold system, mobile-first design, and 
   - [ ] Contact information for changes/cancellations
   - [ ] Mobile-friendly appointment cards
 
+### Critical Timezone Issues Identified 🕐
+
+- [x] **UTC Normalization Analysis** (`todo-utc-normalize.md`)
+  - [x] Identified root cause: Overlapping hold creation causing 9:00 AM → 2:45 PM blocking
+  - [x] Created comprehensive fix plan with 4-phase implementation
+  - [x] Verified Prisma schema is correct (no changes needed)
+  - [x] Documented 15 files requiring timezone fixes
+  - [ ] **URGENT**: Implement Phase 1 fixes for hold system (production blocking)
+  - [ ] **Follow `todo-utc-normalize.md` for detailed implementation steps**
+
 ---
 
 ## 📧 Phase 7: Email Integration (Days 11-12)

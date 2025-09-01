@@ -341,3 +341,65 @@ export function createCalendarEvent(booking: {
     ...booking,
   };
 }
+
+/**
+ * UTC NORMALIZATION UTILITIES
+ * Following todo-utc-normalize.md Phase 1 requirements
+ */
+
+/**
+ * For UTC database operations - creates date range boundaries
+ */
+export function createUtcDateRange(dateStr: string): {
+  startUtc: Date;
+  endUtc: Date;
+} {
+  const startIso = dateToPstMidnight(dateStr);
+  const endIso = createPstDateTime(dateStr, "23:59");
+  return {
+    startUtc: parseISO(startIso),
+    endUtc: parseISO(endIso),
+  };
+}
+
+/**
+ * For server-timezone independent current time
+ * Always returns UTC Date object
+ */
+export function getCurrentUtcTime(): Date {
+  return new Date(); // Always UTC in Node.js/Browser
+}
+
+/**
+ * For PST-aware date comparisons
+ * Handles both ISO strings and Date objects
+ */
+export function comparePstDates(
+  date1: string | Date,
+  date2: string | Date
+): number {
+  const pst1 = typeof date1 === "string" ? parseISO(date1) : date1;
+  const pst2 = typeof date2 === "string" ? parseISO(date2) : date2;
+  return pst1.getTime() - pst2.getTime();
+}
+
+/**
+ * For consistent overlap detection
+ * Used by both BookingHoldService and AvailabilityService
+ */
+export function checkTimeOverlap(
+  start1: Date,
+  end1: Date,
+  start2: Date,
+  end2: Date
+): boolean {
+  return start1 < end2 && start2 < end1;
+}
+
+/**
+ * For consistent logging timestamps
+ * Always returns UTC ISO string for server logs
+ */
+export function getLogTimestamp(): string {
+  return getCurrentUtcTime().toISOString();
+}

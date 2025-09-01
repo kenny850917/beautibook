@@ -9,6 +9,7 @@ import {
   dateToPstMidnight,
   dateStringToDayOfWeek as utilDayOfWeek,
   parseIsoToPstComponents,
+  getCurrentUtcTime,
 } from "@/lib/utils/calendar";
 
 // Convert day string to Prisma enum
@@ -159,11 +160,11 @@ export async function GET(request: NextRequest) {
       availableSlotTimes
     );
 
-    // Filter out past time slots using PST current time
-    const nowPstIso = new Date().toISOString(); // Current UTC time
+    // ✅ UTC NORMALIZATION: Filter out past time slots using proper UTC utilities
+    const nowUtcIso = getCurrentUtcTime().toISOString(); // Proper UTC time
     const validSlotTimes = availableSlotTimes.filter((timeStr) => {
       const slotDateTimeIso = createPstDateTime(validDate, timeStr);
-      return slotDateTimeIso > nowPstIso; // Compare ISO strings directly
+      return slotDateTimeIso > nowUtcIso; // Compare ISO strings directly
     });
 
     console.log(
